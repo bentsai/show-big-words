@@ -99,9 +99,9 @@ test.describe('data model', () => {
     await page.locator('#slide-text').fill('Alpha');
     await page.locator('#btn-new').click();
     await expect(page.locator('.slide-row')).toHaveCount(2);
-    // The new slide is selected, empty, and numbered 2.
+    // The new slide is selected, empty, and numbered 2 (zero-padded display).
     await expect(page.locator('#slide-text')).toHaveValue('');
-    await expect(page.locator('.slide-row.selected .num')).toHaveText('2');
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('02');
 
     const deck = await readDeck(page);
     expect(deck.slides[0].text).toBe('Alpha');
@@ -188,13 +188,13 @@ test.describe('editor interactions', () => {
       { id: 'slide-2', text: 'Second', align: 'center' }
     ], currentSlideId: 'slide-1', nextId: 3 });
 
-    // Slide 1 is open initially.
-    await expect(page.locator('.slide-row.selected .num')).toHaveText('1');
+    // Slide 1 is open initially (zero-padded display).
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('01');
     await expect(page.locator('#slide-text')).toHaveValue('First');
 
     // Open slide 2 by clicking its collapsed row.
     await page.locator('.slide-row').nth(1).click();
-    await expect(page.locator('.slide-row.selected .num')).toHaveText('2');
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('02');
     await expect(page.locator('#slide-text')).toHaveValue('Second');
     // Exactly one textarea is open at a time.
     await expect(page.locator('#slide-text')).toHaveCount(1);
