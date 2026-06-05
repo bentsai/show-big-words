@@ -430,7 +430,7 @@
             /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
             .controls .insert,
             .controls .move,
-            .controls .align button,
+            .controls .align [data-align],
             .controls .delete {
                 display: inline-flex;
                 align-items: center;
@@ -461,14 +461,18 @@
             .controls .dot {
                 color: var(--muted);
             }
-            .controls .align button {
-                color: var(--muted);
+            /* Read-only alignment indicator: the detected option is lit, the rest are
+     dimmed. Not interactive — alignment is set by padding the text with blanks. */
+            .controls .align {
+                cursor: default;
             }
-            .controls .align button:hover {
-                color: var(--ink);
+            .controls .align [data-align] {
+                color: var(--faint, var(--muted));
+                opacity: 0.5;
             }
-            .controls .align button.on {
+            .controls .align [data-align].on {
                 color: var(--ink);
+                opacity: 1;
                 font-weight: 600;
             }
             .controls .delete {
@@ -690,6 +694,33 @@
                 }
             }
 
+            // The slide text is the single source of truth for vertical alignment:
+            // blank lines padding the top push the words down (bottom-aligned), blank
+            // lines padding the bottom hold them up (top-aligned), and none — or both,
+            // balanced — reads as centered. Leading/trailing blanks are consumed by this
+            // detection and not rendered; an interior blank line still splits the main
+            // text from its subtext.
+            function parseSlide(text) {
+                const lines = text.split("\n");
+                let start = 0;
+                let end = lines.length;
+                while (start < end && lines[start].trim() === "") start++;
+                while (end > start && lines[end - 1].trim() === "") end--;
+                const core = lines.slice(start, end);
+                // No actual content (empty or all-blank) has nothing to align: center.
+                const hasLeadingBlank = core.length > 0 && start > 0;
+                const hasTrailingBlank = core.length > 0 && end < lines.length;
+                let align = "center";
+                if (hasTrailingBlank && !hasLeadingBlank) align = "top";
+                else if (hasLeadingBlank && !hasTrailingBlank) align = "bottom";
+
+                const blankIdx = core.findIndex((l) => l.trim() === "");
+                const mainLines =
+                    blankIdx >= 0 ? core.slice(0, blankIdx) : core;
+                const subLines = blankIdx >= 0 ? core.slice(blankIdx + 1) : [];
+                return { align, mainLines, subLines };
+            }
+
             function populateLayer(layer) {
                 const textEl = layer.text;
                 const slideEl = layer.slide;
@@ -699,23 +730,19 @@
                     return;
                 }
                 const slide = presentSlides[currentIndex];
-                if (slide.align === "top") slideEl.classList.add("align-top");
-                else if (slide.align === "bottom")
+                const { align, mainLines, subLines } = parseSlide(slide.text);
+                if (align === "top") slideEl.classList.add("align-top");
+                else if (align === "bottom")
                     slideEl.classList.add("align-bottom");
-                const escaped = slide.text
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;");
-                const lines = escaped.split("\n");
-                const blankIdx = lines.findIndex((l) => l.trim() === "");
-                const mainLines =
-                    blankIdx >= 0 ? lines.slice(0, blankIdx) : lines;
-                const subLines = blankIdx >= 0 ? lines.slice(blankIdx + 1) : [];
 
                 function renderLine(line) {
                     if (line.trim() === "")
                         return '<div class="blank">&nbsp;</div>';
-                    const annotated = line.replace(
+                    const escaped = line
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+                    const annotated = escaped.replace(
                         /\(\((.+?)\)\)/g,
                         '<span class="annotation">$1</span>',
                     );
@@ -830,7 +857,6 @@
                               {
                                   id: "slide-1",
                                   text: SAMPLE_TEXT,
-                                  align: "center",
                               },
                           ];
                 return {
@@ -851,10 +877,6 @@
                         ? s.transition
                         : "none",
                 };
-            }
-
-            function normalizeAlign(a) {
-                return a === "top" || a === "bottom" ? a : "center";
             }
 
             function seedDeck() {
@@ -886,7 +908,6 @@
                     .map((s, i) => ({
                         id: "slide-" + (i + 1),
                         text: s.text,
-                        align: normalizeAlign(s.align),
                     }));
                 if (slides.length === 0) return seedDeck();
                 return makeDeck(slides, data && data.settings);
@@ -925,7 +946,6 @@
                 deck.slides.splice(at + 1, 0, {
                     id,
                     text: "",
-                    align: "center",
                 });
                 deck.currentSlideId = id;
                 saveDeck();
@@ -1079,24 +1099,23 @@
                 sep.textContent = "·";
                 controls.appendChild(sep);
 
+                // Alignment is derived from the text (see parseSlide), so these are
+                // read-only indicators of the detected state, not buttons that set it.
+                // You change alignment by padding the text with blank lines.
+                const detected = parseSlide(slide.text).align;
                 const alignWrap = document.createElement("span");
                 alignWrap.className = "align";
+                alignWrap.setAttribute("role", "status");
+                alignWrap.setAttribute(
+                    "aria-label",
+                    "Vertical alignment: " + detected,
+                );
                 ["top", "center", "bottom"].forEach((a) => {
-                    const b = document.createElement("button");
-                    b.type = "button";
-                    b.dataset.align = a;
-                    b.textContent = a;
-                    if (slide.align === a) b.classList.add("on");
-                    b.addEventListener("click", () => {
-                        currentSlide().align = a;
-                        saveDeck();
-                        alignWrap
-                            .querySelectorAll("button")
-                            .forEach((x) =>
-                                x.classList.toggle("on", x.dataset.align === a),
-                            );
-                    });
-                    alignWrap.appendChild(b);
+                    const word = document.createElement("span");
+                    word.dataset.align = a;
+                    word.textContent = a;
+                    if (detected === a) word.classList.add("on");
+                    alignWrap.appendChild(word);
                 });
                 controls.appendChild(alignWrap);
 
@@ -1113,6 +1132,18 @@
                 }
 
                 return controls;
+            }
+
+            // Re-light the align indicator from the current text as the user types,
+            // without rebuilding the whole row (which would steal textarea focus).
+            function refreshAlignIndicator(text) {
+                const wrap = listEl.querySelector(".slide-row.selected .align");
+                if (!wrap) return;
+                const detected = parseSlide(text).align;
+                wrap.setAttribute("aria-label", "Vertical alignment: " + detected);
+                wrap.querySelectorAll("[data-align]").forEach((w) =>
+                    w.classList.toggle("on", w.dataset.align === detected),
+                );
             }
 
             // Build the editable textarea for the open slide's body.
@@ -1133,6 +1164,7 @@
                     currentSlide().text = ta.value;
                     saveDeck();
                     autosizeTextarea(ta);
+                    refreshAlignIndicator(ta.value);
                 });
                 return ta;
             }
@@ -1303,7 +1335,6 @@
                 // mutates only these vars, never deck.settings.
                 presentSlides = deck.slides.map((s) => ({
                     text: s.text,
-                    align: s.align,
                 }));
                 currentIndex = currentSlideIndex();
                 currentTransition = deck.settings.transition;
@@ -1432,7 +1463,6 @@
                     slides: d.slides.map((s) => ({
                         id: s.id,
                         text: s.text,
-                        align: s.align,
                     })),
                 };
                 return base64urlEncode(JSON.stringify(payload));
