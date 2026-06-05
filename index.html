@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>big-words</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* ---- Slide rendering (themes, fonts, layers) ---- */
+
+  :root {
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --font: 'IBM Plex Sans', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  :root.ink {
+    --bg: #111111;
+    --fg: #f0f0f0;
+  }
+  :root.blue {
+    --bg: #0aa0f5;
+    --fg: #ffffff;
+  }
+  :root.purple {
+    --bg: #7f0af5;
+    --fg: #ffffff;
+  }
+  :root.pink {
+    --bg: #f50ad6;
+    --fg: #ffffff;
+  }
+  :root.red {
+    --bg: #f73b6a;
+    --fg: #ffffff;
+  }
+  :root.orange {
+    --bg: #f5a40a;
+    --fg: #ffffff;
+  }
+  :root.gradient {
+    --fg: #ffffff;
+  }
+  :root.gradient body {
+    background: transparent;
+  }
+  @keyframes gradient {
+    0% { background-position-x: 0; }
+    100% { background-position-x: 10000px; }
+  }
+  :root.font-mono {
+    --font: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+  }
+  :root.font-serif {
+    --font: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  }
+  :root.font-pixel {
+    --font: 'Silkscreen', cursive;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Present mode reads var(--bg) for the backdrop behind the layers.
+       In editor mode #editor covers the body, so this is harmless there. */
+    background: var(--bg);
+  }
+
+  /* The slide font/theme variables only style present-mode layers, not the
+     editor chrome, so the editor keeps its own fixed brutalist styling. */
+  .layer {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    clip-path: inset(0 100% 0 0);
+  }
+  .layer.active {
+    clip-path: none;
+  }
+  :root.gradient .layer {
+    background: transparent;
+  }
+  :root.gradient .layer::before {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(to right, #0aa0f5 0%, #2ce0bf 19%, #76dd2c 40%, #f5a40a 60%, #f50ad6 83%, #0aa0f5 100%);
+    background-size: 10000px 100%;
+    animation: gradient 240s linear infinite;
+    transform: rotate(-16deg);
+    z-index: -1;
+  }
+
+  .slide {
+    position: absolute;
+    top: 3%;
+    left: 4%;
+    width: 92%;
+    height: 94%;
+    display: flex;
+    align-items: center;
+  }
+  .slide.align-top { align-items: flex-start; }
+  .slide.align-bottom { align-items: flex-end; }
+
+  .text {
+    width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  .center { text-align: center; }
+
+  .subtext {
+    font-weight: 200;
+  }
+  :root.font-serif .subtext {
+    font-family: 'DM Sans', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  }
+  :root.font-pixel .text {
+    font-weight: 400;
+  }
+
+  .blank { line-height: 0.25; }
+
+  .annotation {
+    opacity: 0.65;
+  }
+
+  /* ---- Editor chrome (brutalist, typography-driven) ---- */
+
+  :root {
+    --ed-bg: #ffffff;
+    --ed-fg: #111111;
+    --ed-line: #111111;
+    --ed-muted: #767676;
+    --ed-sel: #111111;
+    --ed-sel-fg: #ffffff;
+    --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+  }
+
+  #editor {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    background: var(--ed-bg);
+    color: var(--ed-fg);
+    font-family: var(--ed-mono);
+  }
+  #editor.hidden { display: none; }
+  #present.hidden { display: none; }
+
+  .toolbar {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 2px solid var(--ed-line);
+    flex-wrap: wrap;
+  }
+  .toolbar .brand {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-right: 2px solid var(--ed-line);
+  }
+  .toolbar .settings {
+    display: flex;
+    align-items: stretch;
+  }
+  .toolbar .field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-right: 1px solid var(--ed-line);
+  }
+  .toolbar .field label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ed-muted);
+  }
+  .toolbar select {
+    font-family: var(--ed-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ed-fg);
+    background: var(--ed-bg);
+    border: 1px solid var(--ed-line);
+    padding: 3px 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .actions {
+    display: flex;
+    align-items: stretch;
+    border-left: 2px solid var(--ed-line);
+  }
+
+  button {
+    font-family: var(--ed-mono);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ed-fg);
+    background: var(--ed-bg);
+    border: 1px solid var(--ed-line);
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) {
+    background: var(--ed-sel);
+    color: var(--ed-sel-fg);
+  }
+  button:disabled {
+    color: var(--ed-muted);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .toolbar .actions button { border: none; border-left: 1px solid var(--ed-line); }
+  .toolbar .actions button:first-child { border-left: none; }
+  .toolbar .actions .present { background: var(--ed-sel); color: var(--ed-sel-fg); }
+  .toolbar .actions .present:hover { opacity: 0.85; }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 0;
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid var(--ed-line);
+    min-height: 0;
+  }
+  .sidebar .slide-ops {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 2px solid var(--ed-line);
+  }
+  .sidebar .slide-ops button { border: none; border-right: 1px solid var(--ed-line); border-bottom: 1px solid var(--ed-line); }
+  .slide-list {
+    flex: 1;
+    overflow-y: auto;
+    list-style: none;
+  }
+  .slide-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ed-line);
+    cursor: pointer;
+    user-select: none;
+  }
+  .slide-row:hover { background: #f0f0f0; }
+  .slide-row.selected {
+    background: var(--ed-sel);
+    color: var(--ed-sel-fg);
+  }
+  .slide-row.drag-over { box-shadow: inset 0 3px 0 0 var(--ed-fg); }
+  .slide-row.selected.drag-over { box-shadow: inset 0 3px 0 0 var(--ed-sel-fg); }
+  .slide-row .num {
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 22px;
+    color: var(--ed-muted);
+  }
+  .slide-row.selected .num { color: var(--ed-sel-fg); }
+  .slide-row .snippet {
+    font-size: 13px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .slide-row .snippet.empty { color: var(--ed-muted); font-style: italic; }
+  .slide-row.selected .snippet.empty { color: var(--ed-sel-fg); }
+
+  .edit-pane {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    min-height: 0;
+    min-width: 0;
+  }
+  #slide-text {
+    width: 100%;
+    height: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    padding: 28px 32px;
+    font-family: var(--ed-mono);
+    font-size: 28px;
+    line-height: 1.4;
+    color: var(--ed-fg);
+    background: var(--ed-bg);
+    tab-size: 4;
+  }
+  .align-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-top: 2px solid var(--ed-line);
+  }
+  .align-bar .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ed-muted);
+  }
+  .seg { display: flex; }
+  .seg button { border-right: none; }
+  .seg button:last-child { border-right: 1px solid var(--ed-line); }
+  .seg button.on { background: var(--ed-sel); color: var(--ed-sel-fg); }
+  .align-bar .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--ed-muted);
+    min-height: 1em;
+  }
+  .align-bar .status.error { color: #c41e3a; }
+
+  @media (max-width: 720px) {
+    .workspace { grid-template-columns: 1fr; grid-template-rows: 160px 1fr; }
+    .sidebar { border-right: none; border-bottom: 2px solid var(--ed-line); }
+    #slide-text { font-size: 20px; padding: 16px; }
+    .toolbar .brand { width: 100%; border-right: none; border-bottom: 1px solid var(--ed-line); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Present mode: two stacked layers for wipe transitions. Hidden until Present. -->
+<div id="present" class="hidden">
+  <div id="layer-a" class="layer active">
+    <div id="slide" class="slide">
+      <div id="text" class="text"></div>
+    </div>
+  </div>
+  <div id="layer-b" class="layer">
+    <div class="slide">
+      <div class="text"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Editor mode -->
+<div id="editor">
+  <div class="toolbar">
+    <div class="brand">big-words</div>
+    <div class="settings">
+      <div class="field">
+        <label for="set-theme">Theme</label>
+        <select id="set-theme">
+          <option value="paper">Paper</option>
+          <option value="ink">Ink</option>
+          <option value="presenter">Presenter</option>
+          <option value="gradient">Gradient</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="set-font">Font</label>
+        <select id="set-font">
+          <option value="sans">Sans</option>
+          <option value="mono">Mono</option>
+          <option value="serif">Serif</option>
+          <option value="pixel">Pixel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="set-transition">Transition</label>
+        <select id="set-transition">
+          <option value="none">None</option>
+          <option value="wipe">Wipe</option>
+        </select>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button id="btn-share" type="button">Share URL</button>
+      <button id="btn-present" class="present" type="button">Present</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <div class="sidebar">
+      <div class="slide-ops">
+        <button id="btn-new" type="button">New</button>
+        <button id="btn-dup" type="button">Duplicate</button>
+        <button id="btn-prev" type="button">Move Up</button>
+        <button id="btn-next" type="button">Move Down</button>
+        <button id="btn-del" type="button" style="grid-column: 1 / -1;">Delete</button>
+      </div>
+      <ul id="slide-list" class="slide-list"></ul>
+    </div>
+
+    <div class="edit-pane">
+      <textarea id="slide-text" spellcheck="false" placeholder="Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation."></textarea>
+      <div class="align-bar">
+        <span class="label">Align</span>
+        <div class="seg" id="align-seg">
+          <button type="button" data-align="top">Top</button>
+          <button type="button" data-align="center">Center</button>
+          <button type="button" data-align="bottom">Bottom</button>
+        </div>
+        <span id="status" class="status"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// Slide rendering core (ported from big-text/lib/client.html)
+// =====================================================================
+
+// Minor-third type scale (1.2x ratio): round(1600 / 1.2^i) for i = 0..19
+const SCALE = [1334,1112,926,772,643,536,446,372,310,258,215,179,149,124,104,86,72,60,50,42];
+const layerA = { layer: document.getElementById('layer-a'), slide: document.getElementById('slide'), text: document.getElementById('text') };
+const layerB = { layer: document.getElementById('layer-b'), slide: document.querySelector('#layer-b .slide'), text: document.querySelector('#layer-b .text') };
+let activeLayer = layerA;
+
+const FONTS = ['sans', 'mono', 'serif', 'pixel'];
+const THEMES = ['paper', 'ink', 'presenter', 'gradient'];
+const TRANSITIONS = ['none', 'wipe'];
+const PRESENTER_COLORS = ['blue', 'purple', 'pink', 'red', 'orange', 'ink', 'paper'];
+
+// Ephemeral present-mode state. These never write back to the deck.
+let presentSlides = [];
+let currentIndex = 0;
+let currentFont = 'sans';
+let currentTheme = 'paper';
+let currentTransition = 'none';
+
+function applyFont(font) {
+  currentFont = font;
+  const root = document.documentElement;
+  root.classList.remove('font-mono', 'font-serif', 'font-pixel');
+  if (font === 'mono') root.classList.add('font-mono');
+  if (font === 'serif') root.classList.add('font-serif');
+  if (font === 'pixel') root.classList.add('font-pixel');
+}
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  updateThemeDisplay();
+}
+
+function updateThemeDisplay() {
+  const root = document.documentElement;
+  ['ink', 'blue', 'purple', 'pink', 'red', 'orange', 'gradient'].forEach(t => root.classList.remove(t));
+  if (currentTheme === 'presenter') {
+    const color = PRESENTER_COLORS[currentIndex % PRESENTER_COLORS.length];
+    if (color !== 'paper') root.classList.add(color);
+  } else if (currentTheme === 'gradient') {
+    root.classList.add('gradient');
+  } else if (currentTheme === 'ink') {
+    root.classList.add('ink');
+  }
+}
+
+function fitText(layer) {
+  const slideEl = layer.slide;
+  const textEl = layer.text;
+  const maxH = slideEl.clientHeight;
+  const maxW = slideEl.clientWidth;
+  const annotations = textEl.querySelectorAll('.annotation');
+  const subtextEl = textEl.querySelector('.subtext');
+  for (let i = 0; i < SCALE.length; i++) {
+    textEl.style.fontSize = SCALE[i] + 'px';
+    if (subtextEl) subtextEl.style.fontSize = Math.round(SCALE[i] / 2) + 'px';
+    const annSize = Math.min(i + 4, SCALE.length - 1);
+    annotations.forEach(a => a.style.fontSize = SCALE[annSize] + 'px');
+    if (textEl.scrollHeight > maxH) continue;
+    textEl.style.overflowWrap = 'normal';
+    const overflows = textEl.scrollWidth > maxW;
+    textEl.style.overflowWrap = '';
+    if (overflows) continue;
+    return;
+  }
+}
+
+function populateLayer(layer) {
+  const textEl = layer.text;
+  const slideEl = layer.slide;
+  slideEl.classList.remove('align-top', 'align-bottom');
+  if (presentSlides.length === 0) { textEl.textContent = ''; return; }
+  const slide = presentSlides[currentIndex];
+  if (slide.align === 'top') slideEl.classList.add('align-top');
+  else if (slide.align === 'bottom') slideEl.classList.add('align-bottom');
+  const escaped = slide.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = escaped.split('\n');
+  const blankIdx = lines.findIndex(l => l.trim() === '');
+  const mainLines = blankIdx >= 0 ? lines.slice(0, blankIdx) : lines;
+  const subLines = blankIdx >= 0 ? lines.slice(blankIdx + 1) : [];
+
+  function renderLine(line) {
+    if (line.trim() === '') return '<div class="blank">&nbsp;</div>';
+    const annotated = line.replace(/\(\((.+?)\)\)/g, '<span class="annotation">$1</span>');
+    if (annotated.startsWith('\t')) return '<div class="center">' + annotated.replace(/^\t+/, '') + '</div>';
+    return '<div>' + annotated + '</div>';
+  }
+
+  let html = mainLines.map(renderLine).join('');
+  if (subLines.length) html += '<div class="blank">&nbsp;</div><div class="subtext">' + subLines.map(renderLine).join('') + '</div>';
+  textEl.innerHTML = html;
+}
+
+let wipeAnimation = null;
+const WIPE_DURATION = 1200;
+
+function commitWipe() {
+  if (!wipeAnimation) return;
+  const { incoming, outgoing, anim } = wipeAnimation;
+  wipeAnimation = null;
+  incoming.layer.classList.add('active');
+  anim.cancel();
+  outgoing.layer.classList.remove('active');
+  incoming.layer.style.zIndex = '';
+  outgoing.layer.style.zIndex = '';
+  outgoing.layer.style.background = '';
+  outgoing.layer.style.color = '';
+  outgoing.text.textContent = '';
+  activeLayer = incoming;
+}
+
+function renderSlide(direction) {
+  if (currentIndex >= presentSlides.length) currentIndex = presentSlides.length - 1;
+  if (currentIndex < 0) currentIndex = 0;
+
+  if (currentTransition === 'wipe' && direction) {
+    if (wipeAnimation) { commitWipe(); }
+    const incoming = activeLayer === layerA ? layerB : layerA;
+    const outgoing = activeLayer;
+
+    // Freeze outgoing appearance before theme changes
+    if (currentTheme !== 'gradient') {
+      const cs = getComputedStyle(outgoing.layer);
+      outgoing.layer.style.background = cs.backgroundColor;
+      outgoing.layer.style.color = cs.color;
+    }
+
+    updateThemeDisplay();
+
+    populateLayer(incoming);
+    fitText(incoming);
+
+    // Stack incoming on top, both visible during animation
+    incoming.layer.style.zIndex = 2;
+    outgoing.layer.style.zIndex = 1;
+    outgoing.layer.classList.add('active');
+
+    // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
+    const clipFrom = direction === 'forward'
+      ? 'polygon(calc(100% + 14vh) 0, 200% 0, 200% 100%, 100% 100%)'
+      : 'polygon(0 0, -100% 0, -100% 100%, calc(0% - 14vh) 100%)';
+    const clipTo = direction === 'forward'
+      ? 'polygon(-14vh 0, 200% 0, 200% 100%, calc(0% - 28vh) 100%)'
+      : 'polygon(calc(100% + 28vh) 0, -100% 0, -100% 100%, calc(100% + 14vh) 100%)';
+
+    const anim = incoming.layer.animate(
+      [{ clipPath: clipFrom }, { clipPath: clipTo }],
+      { duration: WIPE_DURATION, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
+    );
+    wipeAnimation = { incoming, outgoing, anim };
+    anim.onfinish = () => { commitWipe(); };
+  } else {
+    updateThemeDisplay();
+    populateLayer(activeLayer);
+    fitText(activeLayer);
+  }
+}
+
+// =====================================================================
+// Deck model + storage
+// =====================================================================
+
+const STORAGE_KEY = 'big-text.deck.v1';
+const SAMPLE_TEXT = 'Ship';
+
+let deck = null;
+
+function makeDeck(slides, settings, nextId) {
+  const list = slides && slides.length ? slides : [{ id: 'slide-1', text: SAMPLE_TEXT, align: 'center' }];
+  return {
+    version: 1,
+    settings: normalizeSettings(settings),
+    slides: list,
+    currentSlideId: list[0].id,
+    nextId: nextId || list.length + 1
+  };
+}
+
+function normalizeSettings(s) {
+  s = s || {};
+  return {
+    theme: THEMES.includes(s.theme) ? s.theme : 'paper',
+    font: FONTS.includes(s.font) ? s.font : 'sans',
+    transition: TRANSITIONS.includes(s.transition) ? s.transition : 'none'
+  };
+}
+
+function normalizeAlign(a) {
+  return (a === 'top' || a === 'bottom') ? a : 'center';
+}
+
+function seedDeck() {
+  return makeDeck(null, null, 2);
+}
+
+function loadDeck() {
+  let raw;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+  if (!raw) return seedDeck();
+  try {
+    const parsed = JSON.parse(raw);
+    return reviveDeck(parsed);
+  } catch (e) {
+    return seedDeck();
+  }
+}
+
+// Build a clean, internally-consistent deck from arbitrary stored/imported
+// data: re-issue ids so nextId never collides and currentSlideId is valid.
+function reviveDeck(data) {
+  const incoming = (data && Array.isArray(data.slides)) ? data.slides : [];
+  const slides = incoming
+    .filter(s => s && typeof s.text === 'string')
+    .map((s, i) => ({ id: 'slide-' + (i + 1), text: s.text, align: normalizeAlign(s.align) }));
+  if (slides.length === 0) return seedDeck();
+  const d = makeDeck(slides, data && data.settings, slides.length + 1);
+  return d;
+}
+
+function saveDeck() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); } catch (e) { /* ignore quota/availability */ }
+}
+
+function currentSlideIndex() {
+  const i = deck.slides.findIndex(s => s.id === deck.currentSlideId);
+  return i >= 0 ? i : 0;
+}
+
+function currentSlide() {
+  return deck.slides[currentSlideIndex()];
+}
+
+// =====================================================================
+// Slide operations
+// =====================================================================
+
+function freshId() {
+  return 'slide-' + (deck.nextId++);
+}
+
+function newSlide() {
+  const id = freshId();
+  const at = currentSlideIndex();
+  deck.slides.splice(at + 1, 0, { id, text: '', align: 'center' });
+  deck.currentSlideId = id;
+  saveDeck();
+  renderEditor();
+  focusTextarea();
+}
+
+function duplicateSlide() {
+  const src = currentSlide();
+  const id = freshId();
+  const at = currentSlideIndex();
+  deck.slides.splice(at + 1, 0, { id, text: src.text, align: src.align });
+  deck.currentSlideId = id;
+  saveDeck();
+  renderEditor();
+  focusTextarea();
+}
+
+function deleteSlide() {
+  if (deck.slides.length <= 1) return;
+  const at = currentSlideIndex();
+  deck.slides.splice(at, 1);
+  const nextIdx = Math.min(at, deck.slides.length - 1);
+  deck.currentSlideId = deck.slides[nextIdx].id;
+  saveDeck();
+  renderEditor();
+}
+
+function moveSlide(delta) {
+  const at = currentSlideIndex();
+  const to = at + delta;
+  if (to < 0 || to >= deck.slides.length) return;
+  reorderSlide(at, to);
+}
+
+function reorderSlide(from, to) {
+  if (from === to || from < 0 || to < 0 || from >= deck.slides.length || to >= deck.slides.length) return;
+  const [moved] = deck.slides.splice(from, 1);
+  deck.slides.splice(to, 0, moved);
+  // selection follows the moved slide (id is stable)
+  deck.currentSlideId = moved.id;
+  saveDeck();
+  renderEditor();
+}
+
+function selectSlide(id) {
+  if (!deck.slides.some(s => s.id === id)) return;
+  deck.currentSlideId = id;
+  saveDeck();
+  renderEditor();
+  focusTextarea();
+}
+
+// =====================================================================
+// Editor view
+// =====================================================================
+
+const editorEl = document.getElementById('editor');
+const presentEl = document.getElementById('present');
+const listEl = document.getElementById('slide-list');
+const textArea = document.getElementById('slide-text');
+const statusEl = document.getElementById('status');
+const themeSel = document.getElementById('set-theme');
+const fontSel = document.getElementById('set-font');
+const transitionSel = document.getElementById('set-transition');
+const delBtn = document.getElementById('btn-del');
+const prevBtn = document.getElementById('btn-prev');
+const nextBtn = document.getElementById('btn-next');
+const alignSeg = document.getElementById('align-seg');
+
+let statusTimer = null;
+function setStatus(msg, isError) {
+  statusEl.textContent = msg || '';
+  statusEl.classList.toggle('error', !!isError);
+  if (statusTimer) clearTimeout(statusTimer);
+  if (msg) statusTimer = setTimeout(() => { statusEl.textContent = ''; statusEl.classList.remove('error'); }, 4000);
+}
+
+function snippetFor(text) {
+  const firstLine = (text.split('\n').find(l => l.trim() !== '') || '').trim();
+  return firstLine;
+}
+
+function renderSlideList() {
+  listEl.innerHTML = '';
+  deck.slides.forEach((slide, i) => {
+    const li = document.createElement('li');
+    li.className = 'slide-row' + (slide.id === deck.currentSlideId ? ' selected' : '');
+    li.dataset.id = slide.id;
+    li.dataset.index = String(i);
+    li.draggable = true;
+
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = String(i + 1);
+
+    const snip = document.createElement('span');
+    const text = snippetFor(slide.text);
+    snip.className = 'snippet' + (text ? '' : ' empty');
+    snip.textContent = text || 'Empty slide';
+
+    li.appendChild(num);
+    li.appendChild(snip);
+    listEl.appendChild(li);
+  });
+}
+
+function renderAlign() {
+  const align = currentSlide().align;
+  alignSeg.querySelectorAll('button').forEach(b => {
+    b.classList.toggle('on', b.dataset.align === align);
+  });
+}
+
+function renderEditor() {
+  renderSlideList();
+  const slide = currentSlide();
+  if (textArea.value !== slide.text) textArea.value = slide.text;
+  renderAlign();
+  themeSel.value = deck.settings.theme;
+  fontSel.value = deck.settings.font;
+  transitionSel.value = deck.settings.transition;
+  delBtn.disabled = deck.slides.length <= 1;
+  const at = currentSlideIndex();
+  prevBtn.disabled = at <= 0;
+  nextBtn.disabled = at >= deck.slides.length - 1;
+}
+
+function focusTextarea() {
+  textArea.focus();
+}
+
+// ---- Editor wiring ----
+
+textArea.addEventListener('input', () => {
+  currentSlide().text = textArea.value;
+  // update snippet + empty state without rebuilding the whole list
+  const row = listEl.querySelector('.slide-row[data-id="' + deck.currentSlideId + '"] .snippet');
+  if (row) {
+    const text = snippetFor(textArea.value);
+    row.textContent = text || 'Empty slide';
+    row.classList.toggle('empty', !text);
+  }
+  saveDeck();
+});
+
+alignSeg.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-align]');
+  if (!btn) return;
+  currentSlide().align = btn.dataset.align;
+  saveDeck();
+  renderAlign();
+});
+
+themeSel.addEventListener('change', () => {
+  deck.settings.theme = themeSel.value;
+  saveDeck();
+});
+fontSel.addEventListener('change', () => {
+  deck.settings.font = fontSel.value;
+  saveDeck();
+});
+transitionSel.addEventListener('change', () => {
+  deck.settings.transition = transitionSel.value;
+  saveDeck();
+});
+
+document.getElementById('btn-new').addEventListener('click', newSlide);
+document.getElementById('btn-dup').addEventListener('click', duplicateSlide);
+document.getElementById('btn-del').addEventListener('click', deleteSlide);
+prevBtn.addEventListener('click', () => moveSlide(-1));
+nextBtn.addEventListener('click', () => moveSlide(1));
+
+// ---- Drag and drop reordering ----
+
+let dragFrom = null;
+
+listEl.addEventListener('dragstart', (e) => {
+  const row = e.target.closest('.slide-row');
+  if (!row) return;
+  dragFrom = Number(row.dataset.index);
+  e.dataTransfer.effectAllowed = 'move';
+  // Some browsers require data to be set for drag to start.
+  try { e.dataTransfer.setData('text/plain', row.dataset.id); } catch (err) {}
+});
+
+listEl.addEventListener('dragover', (e) => {
+  if (dragFrom === null) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const row = e.target.closest('.slide-row');
+  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  if (row) row.classList.add('drag-over');
+});
+
+listEl.addEventListener('dragleave', (e) => {
+  const row = e.target.closest('.slide-row');
+  if (row && !row.contains(e.relatedTarget)) row.classList.remove('drag-over');
+});
+
+listEl.addEventListener('drop', (e) => {
+  if (dragFrom === null) return;
+  e.preventDefault();
+  const row = e.target.closest('.slide-row');
+  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  if (row) {
+    const to = Number(row.dataset.index);
+    reorderSlide(dragFrom, to);
+  }
+  dragFrom = null;
+});
+
+listEl.addEventListener('dragend', () => {
+  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  dragFrom = null;
+});
+
+// Click to select (but not when finishing a drag).
+listEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.slide-row');
+  if (row) selectSlide(row.dataset.id);
+});
+
+// =====================================================================
+// Present mode
+// =====================================================================
+
+let presenting = false;
+
+function enterPresent() {
+  presenting = true;
+  // Snapshot the deck into ephemeral present state. Cycling f/t/b below
+  // mutates only these vars, never deck.settings.
+  presentSlides = deck.slides.map(s => ({ text: s.text, align: s.align }));
+  currentIndex = currentSlideIndex();
+  currentTransition = deck.settings.transition;
+  applyFont(deck.settings.font);
+  applyTheme(deck.settings.theme);
+
+  editorEl.classList.add('hidden');
+  presentEl.classList.remove('hidden');
+
+  document.removeEventListener('keydown', onPresentKey);
+  document.addEventListener('keydown', onPresentKey);
+  renderSlide();
+}
+
+function exitPresent() {
+  presenting = false;
+  document.removeEventListener('keydown', onPresentKey);
+  if (wipeAnimation) commitWipe();
+
+  // Reset both layers to a clean state.
+  layerA.layer.classList.add('active');
+  layerB.layer.classList.remove('active');
+  layerA.text.style.visibility = '';
+  layerB.text.style.visibility = '';
+  activeLayer = layerA;
+
+  presentEl.classList.add('hidden');
+  editorEl.classList.remove('hidden');
+
+  // Restore the editor's saved theme/font (present cycling was ephemeral).
+  applyFont(deck.settings.font);
+  applyTheme(deck.settings.theme);
+  renderEditor();
+}
+
+function onPresentKey(e) {
+  switch (e.key) {
+    case 'Escape':
+      exitPresent();
+      e.preventDefault();
+      break;
+    case 'ArrowRight':
+    case ' ':
+    case 'Enter':
+      if (currentIndex < presentSlides.length - 1) { currentIndex++; renderSlide('forward'); }
+      e.preventDefault();
+      break;
+    case 'ArrowLeft':
+    case 'Backspace':
+      if (currentIndex > 0) { currentIndex--; renderSlide('backward'); }
+      e.preventDefault();
+      break;
+    case 'Home':
+      currentIndex = 0; renderSlide('backward');
+      e.preventDefault();
+      break;
+    case 'End':
+      currentIndex = presentSlides.length - 1; renderSlide('forward');
+      e.preventDefault();
+      break;
+    case 'f':
+      applyFont(FONTS[(FONTS.indexOf(currentFont) + 1) % FONTS.length]);
+      renderSlide();
+      e.preventDefault();
+      break;
+    case 't':
+      applyTheme(THEMES[(THEMES.indexOf(currentTheme) + 1) % THEMES.length]);
+      renderSlide();
+      e.preventDefault();
+      break;
+    case 'b': {
+      const vis = activeLayer.text.style.visibility === 'hidden' ? '' : 'hidden';
+      layerA.text.style.visibility = vis;
+      layerB.text.style.visibility = vis;
+      e.preventDefault();
+      break;
+    }
+  }
+}
+
+document.getElementById('btn-present').addEventListener('click', enterPresent);
+
+let resizeRaf;
+window.addEventListener('resize', () => {
+  if (!presenting) return;
+  cancelAnimationFrame(resizeRaf);
+  resizeRaf = requestAnimationFrame(() => renderSlide());
+});
+
+// =====================================================================
+// URL hash sharing
+// =====================================================================
+
+function base64urlEncode(str) {
+  // Encode UTF-8 safely, then make the base64 URL-safe.
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlDecode(str) {
+  let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  return decodeURIComponent(escape(atob(b64)));
+}
+
+function encodeDeck(d) {
+  const payload = {
+    version: 1,
+    settings: d.settings,
+    slides: d.slides.map(s => ({ id: s.id, text: s.text, align: s.align }))
+  };
+  return base64urlEncode(JSON.stringify(payload));
+}
+
+function shareUrl() {
+  const encoded = encodeDeck(deck);
+  const base = location.href.split('#')[0];
+  const url = base + '#deck=' + encoded;
+  history.replaceState(null, '', url);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(
+      () => setStatus('Share URL copied to clipboard'),
+      () => setStatus('Share URL ready in address bar')
+    );
+  } else {
+    setStatus('Share URL ready in address bar');
+  }
+}
+
+document.getElementById('btn-share').addEventListener('click', shareUrl);
+
+// Returns a decoded deck object from the current #deck= hash, or null.
+function deckFromHash() {
+  const match = location.hash.match(/(?:^#|[#&])deck=([^&]+)/);
+  if (!match) return undefined; // no hash present at all
+  try {
+    const json = base64urlDecode(match[1]);
+    const data = JSON.parse(json);
+    if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return null;
+    return reviveDeck(data);
+  } catch (e) {
+    return null; // present but invalid
+  }
+}
+
+// =====================================================================
+// Boot
+// =====================================================================
+
+function boot() {
+  const fromHash = deckFromHash();
+  if (fromHash === null) {
+    // Hash present but invalid: keep local deck, surface a non-blocking error.
+    deck = loadDeck();
+    setStatus('Could not read shared deck from URL; kept your local deck', true);
+    history.replaceState(null, '', location.href.split('#')[0]);
+  } else if (fromHash) {
+    // Valid shared deck: import, save, select first slide, clear the hash.
+    deck = fromHash;
+    deck.currentSlideId = deck.slides[0].id;
+    saveDeck();
+    history.replaceState(null, '', location.href.split('#')[0]);
+  } else {
+    // No hash: load local or seed sample.
+    deck = loadDeck();
+    saveDeck();
+  }
+
+  // Editor chrome has its own styling, so we don't apply the slide theme/font
+  // classes to the document until presenting.
+  renderEditor();
+}
+
+boot();
+</script>
+</body>
+</html>

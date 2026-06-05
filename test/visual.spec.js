@@ -1,0 +1,501 @@
+const { test, expect } = require('@playwright/test');
+
+const STORAGE_KEY = 'big-text.deck.v1';
+const SCALE = [1334,1112,926,772,643,536,446,372,310,258,215,179,149,124,104,86,72,60,50,42];
+
+// Base64url encoder mirroring the app's encodeDeck, for building #deck= URLs.
+function encodeDeck(payload) {
+  const json = JSON.stringify(payload);
+  const b64 = Buffer.from(json, 'utf-8').toString('base64');
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Load the app with a clean localStorage (no shared hash). The init script
+// uses a sessionStorage flag so it only clears once per context — a reload or
+// second navigation then exercises real persistence instead of re-clearing.
+async function freshLoad(page) {
+  await page.addInitScript((key) => {
+    try {
+      if (!sessionStorage.getItem('__seeded')) {
+        localStorage.removeItem(key);
+        sessionStorage.setItem('__seeded', '1');
+      }
+    } catch (e) {}
+  }, STORAGE_KEY);
+  await page.goto('/index.html');
+  await page.waitForSelector('.slide-row.selected');
+}
+
+// Load the app with a pre-seeded deck in localStorage (seeded once per context).
+async function loadWithDeck(page, deck) {
+  await page.addInitScript(({ key, value }) => {
+    try {
+      if (!sessionStorage.getItem('__seeded')) {
+        localStorage.setItem(key, value);
+        sessionStorage.setItem('__seeded', '1');
+      }
+    } catch (e) {}
+  }, { key: STORAGE_KEY, value: JSON.stringify(deck) });
+  await page.goto('/index.html');
+  await page.waitForSelector('.slide-row.selected');
+}
+
+function readDeck(page) {
+  return page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }, STORAGE_KEY);
+}
+
+// ---------------------------------------------------------------------
+// Data model
+// ---------------------------------------------------------------------
+
+test.describe('data model', () => {
+  test('first load seeds a single sample slide', async ({ page }) => {
+    await freshLoad(page);
+    const rows = page.locator('.slide-row');
+    await expect(rows).toHaveCount(1);
+    await expect(page.locator('#slide-text')).toHaveValue('Ship');
+    const deck = await readDeck(page);
+    expect(deck.slides.length).toBe(1);
+    expect(deck.version).toBe(1);
+  });
+
+  test('editing updates only the current slide', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#btn-new').click();
+    await expect(page.locator('.slide-row')).toHaveCount(2);
+
+    // The new slide is selected and empty; type into it.
+    await page.locator('#slide-text').fill('Second');
+    let deck = await readDeck(page);
+    expect(deck.slides[0].text).toBe('Ship');
+    expect(deck.slides[1].text).toBe('Second');
+
+    // Switch to the first slide; its text is unchanged.
+    await page.locator('.slide-row').first().click();
+    await expect(page.locator('#slide-text')).toHaveValue('Ship');
+  });
+
+  test('new and duplicate preserve a valid selection', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Alpha');
+    await page.locator('#btn-dup').click();
+    await expect(page.locator('.slide-row')).toHaveCount(2);
+    // Duplicate is selected and carries the same text.
+    await expect(page.locator('#slide-text')).toHaveValue('Alpha');
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('2');
+
+    const deck = await readDeck(page);
+    expect(deck.slides[0].id).not.toBe(deck.slides[1].id);
+    expect(deck.currentSlideId).toBe(deck.slides[1].id);
+  });
+
+  test('delete is disabled at one slide and keeps a valid selection otherwise', async ({ page }) => {
+    await freshLoad(page);
+    await expect(page.locator('#btn-del')).toBeDisabled();
+
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Two');
+    await expect(page.locator('#btn-del')).toBeEnabled();
+
+    await page.locator('#btn-del').click();
+    await expect(page.locator('.slide-row')).toHaveCount(1);
+    await expect(page.locator('#btn-del')).toBeDisabled();
+    const deck = await readDeck(page);
+    expect(deck.slides.some(s => s.id === deck.currentSlideId)).toBe(true);
+  });
+
+  test('move and drag reorder keep selection on the moved slide', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('One');
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Two');
+
+    // Slide 2 ("Two") is selected; move it up.
+    await page.locator('#btn-prev').click();
+    await expect(page.locator('.slide-row').first()).toContainText('Two');
+    await expect(page.locator('.slide-row.selected')).toContainText('Two');
+
+    const deck = await readDeck(page);
+    expect(deck.slides[0].text).toBe('Two');
+    expect(deck.slides[1].text).toBe('One');
+  });
+
+  test('settings persist independently of slide text', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#set-theme').selectOption('ink');
+    await page.locator('#set-font').selectOption('mono');
+    await page.locator('#set-transition').selectOption('wipe');
+    await page.locator('#slide-text').fill('Body changed');
+
+    const deck = await readDeck(page);
+    expect(deck.settings).toEqual({ theme: 'ink', font: 'mono', transition: 'wipe' });
+    expect(deck.slides[0].text).toBe('Body changed');
+  });
+
+  test('reload restores the deck from localStorage', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Persisted');
+    await page.locator('#set-theme').selectOption('ink');
+
+    await page.reload();
+    await page.waitForSelector('.slide-row.selected');
+    await expect(page.locator('#slide-text')).toHaveValue('Persisted');
+    await expect(page.locator('#set-theme')).toHaveValue('ink');
+  });
+
+  test('per-slide align is stored and restored', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#align-seg button[data-align="top"]').click();
+    await expect(page.locator('#align-seg button[data-align="top"]')).toHaveClass(/on/);
+    let deck = await readDeck(page);
+    expect(deck.slides[0].align).toBe('top');
+
+    await page.reload();
+    await page.waitForSelector('.slide-row.selected');
+    await expect(page.locator('#align-seg button[data-align="top"]')).toHaveClass(/on/);
+  });
+});
+
+// ---------------------------------------------------------------------
+// URL sharing
+// ---------------------------------------------------------------------
+
+test.describe('url sharing', () => {
+  test('Share URL encodes the full deck into #deck=', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Shared');
+    await page.locator('#set-theme').selectOption('ink');
+    await page.locator('#btn-share').click();
+
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clip).toContain('#deck=');
+
+    const encoded = clip.split('#deck=')[1];
+    const json = Buffer.from(encoded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+    const payload = JSON.parse(json);
+    expect(payload.slides[0].text).toBe('Shared');
+    expect(payload.settings.theme).toBe('ink');
+  });
+
+  test('visiting a valid shared hash imports and saves the deck', async ({ page }) => {
+    const payload = {
+      version: 1,
+      settings: { theme: 'ink', font: 'serif', transition: 'none' },
+      slides: [
+        { id: 'slide-1', text: 'Imported one', align: 'center' },
+        { id: 'slide-2', text: 'Imported two', align: 'top' }
+      ]
+    };
+    // Seed a different local deck, then land on the hash URL in a single
+    // navigation so boot() runs with the hash present and the local deck set.
+    await page.addInitScript(({ key, value }) => {
+      try { localStorage.setItem(key, value); } catch (e) {}
+    }, { key: STORAGE_KEY, value: JSON.stringify({ version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Local only', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 }) });
+    await page.goto('/index.html#deck=' + encodeDeck(payload));
+    await page.waitForSelector('.slide-row.selected');
+
+    await expect(page.locator('.slide-row')).toHaveCount(2);
+    await expect(page.locator('#slide-text')).toHaveValue('Imported one');
+    await expect(page.locator('#set-font')).toHaveValue('serif');
+
+    // Hash is cleared and the imported deck is now in localStorage.
+    expect(page.url()).not.toContain('#deck=');
+    const deck = await readDeck(page);
+    expect(deck.slides.map(s => s.text)).toEqual(['Imported one', 'Imported two']);
+  });
+
+  test('invalid hash does not overwrite localStorage', async ({ page }) => {
+    const local = { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Keep me', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 };
+    await page.addInitScript(({ key, value }) => {
+      try { localStorage.setItem(key, value); } catch (e) {}
+    }, { key: STORAGE_KEY, value: JSON.stringify(local) });
+    await page.goto('/index.html#deck=not-valid-base64-$$$');
+    await page.waitForSelector('.slide-row.selected');
+
+    await expect(page.locator('#slide-text')).toHaveValue('Keep me');
+    const deck = await readDeck(page);
+    expect(deck.slides[0].text).toBe('Keep me');
+  });
+
+  test('no hash loads localStorage or the sample deck', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'From storage', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await expect(page.locator('#slide-text')).toHaveValue('From storage');
+  });
+});
+
+// ---------------------------------------------------------------------
+// Rendering and presentation
+// ---------------------------------------------------------------------
+
+// Enter present mode (the deck must already be loaded).
+async function present(page) {
+  await page.locator('#btn-present').click();
+  // #present is a zero-size wrapper (its layers are position:fixed), so wait on
+  // the editor hiding rather than the wrapper becoming "visible".
+  await page.waitForFunction(() => document.getElementById('editor').classList.contains('hidden'));
+}
+
+test.describe('presentation', () => {
+  test('present starts at the selected slide', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('First');
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Second');
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Third');
+
+    // Select the middle slide, then present.
+    await page.locator('.slide-row').nth(1).click();
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('Second');
+  });
+
+  test('single word is never broken across lines', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('Ship');
+
+    const lines = await page.evaluate(() => {
+      const el = document.getElementById('text');
+      const textNode = el.firstChild.firstChild;
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      return range.getClientRects().length;
+    });
+    expect(lines).toBe(1);
+  });
+
+  test('single word fills significant viewport width', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('Ship');
+    const ratio = await page.evaluate(() => {
+      const el = document.getElementById('text');
+      return el.getBoundingClientRect().width / window.innerWidth;
+    });
+    expect(ratio).toBeGreaterThan(0.5);
+  });
+
+  test('multi-word text wraps at spaces not mid-word', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship it today', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('Ship it today');
+
+    const hasBrokenWords = await page.evaluate(() => {
+      const el = document.getElementById('text');
+      const text = el.textContent;
+      const words = text.split(/\s+/);
+      const range = document.createRange();
+      const textNode = el.firstChild.firstChild;
+      let pos = 0;
+      for (const word of words) {
+        const start = text.indexOf(word, pos);
+        range.setStart(textNode, start);
+        range.setEnd(textNode, start + word.length);
+        if (range.getClientRects().length > 1) return true;
+        pos = start + word.length;
+      }
+      return false;
+    });
+    expect(hasBrokenWords).toBe(false);
+  });
+
+  test('text does not overflow the slide', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'Ship', align: 'center' },
+      { id: 'slide-2', text: 'The best way to predict the future is to invent it', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('Ship');
+
+    for (let i = 0; i < 2; i++) {
+      const overflow = await page.evaluate(() => {
+        const slide = document.getElementById('slide');
+        const text = document.getElementById('text');
+        const s = slide.getBoundingClientRect();
+        const t = text.getBoundingClientRect();
+        return { right: t.right > s.right + 1, bottom: t.bottom > s.bottom + 1 };
+      });
+      expect(overflow.right).toBe(false);
+      expect(overflow.bottom).toBe(false);
+      if (i === 0) await page.keyboard.press('ArrowRight');
+    }
+  });
+
+  test('keyboard navigation works', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'One', align: 'center' },
+      { id: 'slide-2', text: 'Two', align: 'center' },
+      { id: 'slide-3', text: 'Three', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 4 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('One');
+
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#text')).toHaveText('Two');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('#text')).toHaveText('One');
+    await page.keyboard.press('End');
+    await expect(page.locator('#text')).toHaveText('Three');
+    await page.keyboard.press('Home');
+    await expect(page.locator('#text')).toHaveText('One');
+  });
+
+  test('f key cycles fonts ephemerally (deck unchanged)', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    const getFont = () => page.evaluate(() => {
+      const c = document.documentElement.className;
+      if (c.includes('font-mono')) return 'mono';
+      if (c.includes('font-serif')) return 'serif';
+      if (c.includes('font-pixel')) return 'pixel';
+      return 'sans';
+    });
+    expect(await getFont()).toBe('sans');
+    await page.keyboard.press('f');
+    expect(await getFont()).toBe('mono');
+
+    // Exit and confirm the saved deck font was not changed.
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#editor:not(.hidden)');
+    const deck = await readDeck(page);
+    expect(deck.settings.font).toBe('sans');
+    await expect(page.locator('#set-font')).toHaveValue('sans');
+  });
+
+  test('t key cycles themes ephemerally (deck unchanged)', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    const getBg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(await getBg()).toBe('rgb(255, 255, 255)'); // paper
+    await page.keyboard.press('t');
+    expect(await getBg()).toBe('rgb(17, 17, 17)'); // ink
+
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#editor:not(.hidden)');
+    const deck = await readDeck(page);
+    expect(deck.settings.theme).toBe('paper');
+  });
+
+  test('b key toggles text visibility', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    const getVis = () => page.evaluate(() => getComputedStyle(document.getElementById('text')).visibility);
+    expect(await getVis()).toBe('visible');
+    await page.keyboard.press('b');
+    expect(await getVis()).toBe('hidden');
+    await page.keyboard.press('b');
+    expect(await getVis()).toBe('visible');
+  });
+
+  test('Escape returns to the editor', async ({ page }) => {
+    await freshLoad(page);
+    await present(page);
+    await expect(page.locator('#present')).not.toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('#editor:not(.hidden)');
+    await expect(page.locator('#present')).toHaveClass(/hidden/);
+  });
+
+  test('subtext renders at half the main scale', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Main\n\nsubtext here', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    await expect(page.locator('.subtext')).toHaveCount(1);
+    const result = await page.evaluate(() => {
+      const text = document.getElementById('text');
+      const sub = text.querySelector('.subtext');
+      return { main: parseInt(text.style.fontSize), sub: parseInt(sub.style.fontSize) };
+    });
+    expect(result.sub).toBe(Math.round(result.main / 2));
+  });
+
+  test('tab-indented line renders centered', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: '\tcentered line\nnot centered', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    const result = await page.evaluate(() => {
+      const text = document.getElementById('text');
+      const centered = text.querySelector('.center');
+      const divs = text.querySelectorAll('div');
+      const nonCentered = Array.from(divs).find(d => !d.classList.contains('center'));
+      return {
+        hasCenter: !!centered,
+        centeredText: centered ? centered.textContent : null,
+        centeredAlign: centered ? getComputedStyle(centered).textAlign : null,
+        nonCenteredAlign: nonCentered ? getComputedStyle(nonCentered).textAlign : null,
+      };
+    });
+    expect(result.hasCenter).toBe(true);
+    expect(result.centeredText).toBe('centered line');
+    expect(result.centeredAlign).toBe('center');
+    expect(result.nonCenteredAlign).not.toBe('center');
+  });
+
+  test('annotation renders 4 steps smaller with reduced opacity', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Do not be like them ((Matthew 6:8))', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await present(page);
+    const result = await page.evaluate((SCALE) => {
+      const text = document.getElementById('text');
+      const ann = text.querySelector('.annotation');
+      if (!ann) return { found: false };
+      const parentIdx = SCALE.indexOf(parseInt(text.style.fontSize));
+      const annIdx = SCALE.indexOf(parseInt(ann.style.fontSize));
+      return { found: true, text: ann.textContent, opacity: getComputedStyle(ann).opacity, stepsDiff: annIdx - parentIdx };
+    }, SCALE);
+    expect(result.found).toBe(true);
+    expect(result.text).toBe('Matthew 6:8');
+    expect(parseFloat(result.opacity)).toBeLessThan(1);
+    expect(result.stepsDiff).toBe(4);
+  });
+
+  test('per-slide align maps to flex alignment', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'Top', align: 'top' },
+      { id: 'slide-2', text: 'Center', align: 'center' },
+      { id: 'slide-3', text: 'Bottom', align: 'bottom' }
+    ], currentSlideId: 'slide-1', nextId: 4 });
+    await present(page);
+    const align = () => page.evaluate(() => getComputedStyle(document.getElementById('slide')).alignItems);
+    expect(await align()).toBe('flex-start');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#text')).toHaveText('Center');
+    expect(await align()).toBe('center');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#text')).toHaveText('Bottom');
+    expect(await align()).toBe('flex-end');
+  });
+});
+
+// ---------------------------------------------------------------------
+// Styling
+// ---------------------------------------------------------------------
+
+test.describe('styling', () => {
+  test('UI contains no emoji', async ({ page }) => {
+    await freshLoad(page);
+    const text = await page.evaluate(() => document.body.innerText);
+    // Match common emoji ranges.
+    const emoji = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/u;
+    expect(emoji.test(text)).toBe(false);
+  });
+
+  test('controls remain visible and non-overlapping at mobile and desktop widths', async ({ page }) => {
+    await freshLoad(page);
+    for (const size of [{ width: 375, height: 700 }, { width: 1280, height: 720 }]) {
+      await page.setViewportSize(size);
+      const present = page.locator('#btn-present');
+      const ta = page.locator('#slide-text');
+      await expect(present).toBeVisible();
+      await expect(ta).toBeVisible();
+      const overlap = await page.evaluate(() => {
+        const a = document.getElementById('btn-present').getBoundingClientRect();
+        const b = document.getElementById('slide-text').getBoundingClientRect();
+        return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      });
+      expect(overlap).toBe(false);
+    }
+  });
+});
