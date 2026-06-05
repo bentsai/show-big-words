@@ -342,6 +342,52 @@ test.describe('url sharing', () => {
 });
 
 // ---------------------------------------------------------------------
+// Editor keyboard shortcuts
+// ---------------------------------------------------------------------
+
+test.describe('editor shortcuts', () => {
+  test('Escape blurs the slide textarea so single-key shortcuts work', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').focus();
+    await expect(page.locator('#slide-text')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#slide-text')).not.toBeFocused();
+  });
+
+  test('p enters present mode when not editing', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Ship');
+    await page.keyboard.press('Escape'); // leave the textarea
+    await page.keyboard.press('p');
+    await page.waitForFunction(() => document.getElementById('editor').classList.contains('hidden'));
+    await expect(page.locator('#text')).toHaveText('Ship');
+  });
+
+  test('t and f cycle theme and font when not editing', async ({ page }) => {
+    await freshLoad(page);
+    await page.keyboard.press('Escape'); // textarea is auto-focused on load
+    await page.keyboard.press('t');      // paper -> ink
+    await page.keyboard.press('f');      // sans -> mono
+    await expect(page.locator('#set-theme')).toHaveText('ink');
+    await expect(page.locator('#set-font')).toHaveText('mono');
+    const deck = await readDeck(page);
+    expect(deck.settings.theme).toBe('ink');
+    expect(deck.settings.font).toBe('mono');
+  });
+
+  test('t and f type normally while editing the textarea', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('');
+    await page.locator('#slide-text').focus();
+    await page.keyboard.press('t');
+    await page.keyboard.press('f');
+    await expect(page.locator('#slide-text')).toHaveValue('tf');
+    await expect(page.locator('#set-theme')).toHaveText('paper'); // unchanged
+    await expect(page.locator('#set-font')).toHaveText('sans');
+  });
+});
+
+// ---------------------------------------------------------------------
 // Rendering and presentation
 // ---------------------------------------------------------------------
 

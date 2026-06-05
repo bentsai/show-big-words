@@ -20,6 +20,8 @@ Type your slides in the editor, then hit **Present →** to show them full-scree
 
 Each slide is a text box. The masthead shows the current **theme**, **font**, and **transition** — click any of them to cycle through the options. Use the slide controls to insert, reorder, and align slides.
 
+While editing, press **Escape** to step out of the text box; then `t` cycles the theme, `f` cycles the font, and `p` starts presenting.
+
 ### Settings
 
 | Setting | Values | Default |
