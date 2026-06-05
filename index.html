@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <meta name="description" content="Show Big Words is a static, local-first slide editor that presents your text as large as it will fit on screen. No accounts, no build step; decks save locally and share by URL.">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Rubik:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -148,7 +148,8 @@
     --slide-gray: #868680;
     --hairline: rgba(26, 26, 26, 0.12);
     --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
-    --indent: calc(2ch + 20px);   /* number column + gap, for aligning loose items */
+    --ui-sans: 'Rubik', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    --indent: 86px;   /* number column (58px) + row gap (28px), for aligning loose items */
   }
 
   #editor {
@@ -157,7 +158,9 @@
     overflow-y: auto;
     background: var(--paper);
     color: var(--ink);
-    font-family: var(--ed-mono);
+    /* Editor chrome (copy, buttons, numbers, controls) is Rubik; slide content
+       (the textarea and collapsed snippets) opts back into IBM Plex Mono. */
+    font-family: var(--ui-sans);
     -webkit-font-smoothing: antialiased;
   }
   #editor.hidden { display: none; }
@@ -178,8 +181,9 @@
     font-style: italic;
     font-weight: 600;
     font-size: 40px;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.1rem;
     line-height: 1;
+    color: var(--muted);
   }
   .masthead-right {
     display: flex;
@@ -245,17 +249,19 @@
   }
   .slide-row {
     display: flex;
-    align-items: baseline;
-    gap: 20px;
+    align-items: flex-start;
+    gap: 28px;
     padding: 14px 0;
   }
   .slide-row.drag-over { box-shadow: inset 0 2px 0 0 var(--ink); }
   .slide-row .num {
     font-variant-numeric: tabular-nums;
-    font-size: 28px;
+    font-size: 48px;
     font-weight: 700;
+    line-height: 1;
     min-width: 2ch;
     text-align: left;
+    letter-spacing: -0.03em;
     color: var(--muted);
     cursor: grab;
     user-select: none;
@@ -264,8 +270,10 @@
   .slide-row .snippet {
     flex: 1;
     min-width: 0;
+    /* Snippet is slide content: keep it in the slide's mono face, normal weight. */
+    font-family: var(--ed-mono);
     font-size: 34px;
-    font-weight: 700;
+    font-weight: 400;
     line-height: 1.1;
     letter-spacing: -0.02em;
     text-align: left;
@@ -312,16 +320,25 @@
   }
   .controls {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 14px;
     font-size: 13px;
     color: var(--muted);
   }
-  .controls .align { display: flex; gap: 12px; }
+  /* Negative margin cancels the first button's padding so "top" stays flush left. */
+  .controls .align { display: flex; gap: 8px; margin-left: -6px; }
+  /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
+  .controls .align button,
+  .controls .delete {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 6px;
+  }
   .controls .align button { color: var(--muted); }
   .controls .align button:hover { color: var(--ink); }
   .controls .align button.on { color: var(--ink); font-weight: 600; }
-  .controls .delete { margin-left: auto; }
+  .controls .delete { margin-left: auto; margin-right: -6px; }
   .controls .delete:hover { color: #c41e3a; }
 
   .new-slide {
@@ -338,9 +355,12 @@
     .masthead .title { font-size: 30px; }
     .masthead-status { padding: 8px 18px 0; }
     .slide-stack { padding: 16px 18px 0; }
+    .slide-row { gap: 20px; }
+    .slide-row .num { font-size: 34px; }
     .slide-row .snippet, #slide-text { font-size: 24px; }
     #slide-text { min-height: 24vh; }
-    .new-slide { margin-left: 18px; font-size: 16px; }
+    /* Number column (~41px at 34px mono) + row gap (20px) = 61px. */
+    .new-slide { margin-left: 18px; font-size: 16px; padding-left: 61px; }
   }
 </style>
 </head>
@@ -789,9 +809,12 @@ function renderSlideList() {
     const num = document.createElement('button');
     num.type = 'button';
     num.className = 'num';
-    num.textContent = String(i + 1);
+    // Zero-padded display (01, 02, …). The accessible name must contain the
+    // visible "01" text (WCAG 2.5.3 Label in Name), so reuse the padded form.
+    const padded = String(i + 1).padStart(2, '0');
+    num.textContent = padded;
     num.draggable = true;   // drag the number to reorder
-    num.setAttribute('aria-label', 'Slide ' + (i + 1) + '. Use arrow up or down to reorder');
+    num.setAttribute('aria-label', 'Slide ' + padded + '. Use arrow up or down to reorder');
     li.appendChild(num);
 
     if (slide.id === deck.currentSlideId) {
