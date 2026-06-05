@@ -149,7 +149,7 @@
     --hairline: rgba(26, 26, 26, 0.12);
     --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
     --ui-sans: 'Rubik', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-    --indent: 86px;   /* number column (58px) + row gap (28px), for aligning loose items */
+    --num-col: 2.5rem;   /* number column width; content + controls align past it */
   }
 
   #editor {
@@ -241,35 +241,51 @@
   }
   .masthead-status.error { color: #c41e3a; }
 
-  /* Slide stack: vertical numbered list, one slide open at a time. */
+  /* Slide stack: vertical numbered list, one slide open at a time. Each row is
+     a header (number + controls) over a hairline, with the content below it. */
   .slide-stack {
     list-style: none;
     padding: 20px 32px 0;
     max-width: 1100px;
   }
   .slide-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 28px;
-    padding: 14px 0;
+    padding: 18px 0;
   }
   .slide-row.drag-over { box-shadow: inset 0 2px 0 0 var(--ink); }
-  .slide-row .num {
+
+  /* Header line: the number reads as a heading; controls sit beside it (open
+     slide only); a hairline separates the header from the content below. */
+  .slide-head {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .slide-head .num {
+    font-family: var(--ed-mono);
     font-variant-numeric: tabular-nums;
-    font-size: 3rem;
-    font-weight: 700;
+    font-size: 1.125rem;
+    font-weight: 600;
     line-height: 1;
-    min-width: 2ch;
+    min-width: var(--num-col);
     text-align: left;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
     color: var(--muted);
     cursor: grab;
     user-select: none;
   }
-  .slide-row.selected .num { color: var(--ink); }
-  .slide-row .snippet {
-    flex: 1;
-    min-width: 0;
+  .slide-row.selected .slide-head .num { color: var(--ink); }
+
+  /* Content sits below the hairline, indented to clear the number column so it
+     lines up with the controls' "top" label above it. */
+  .slide-body {
+    padding-top: 12px;
+    padding-left: var(--num-col);
+  }
+  .slide-body .snippet {
+    display: block;
+    width: 100%;
     /* Inactive slides show their full text in the slide's mono face, so the
        whole deck reads at a glance; clicking one opens it for editing. */
     font-family: var(--ed-mono);
@@ -283,16 +299,9 @@
     white-space: pre-wrap;
     overflow-wrap: break-word;
   }
-  .slide-row .snippet:hover { color: var(--ink); }
-  .slide-row .snippet.empty { font-style: italic; opacity: 0.7; }
+  .slide-body .snippet:hover { color: var(--ink); }
+  .slide-body .snippet.empty { font-style: italic; opacity: 0.7; }
 
-  .slide-editor {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
   #slide-text {
     width: 100%;
     /* Height is set to fit content by autosizeTextarea() in JS, so opening a slide for
@@ -321,14 +330,17 @@
     outline: none;
     background: rgba(26, 26, 26, 0.05);
   }
+  /* Controls live in the header beside the number; delete is pushed flush right. */
   .controls {
+    flex: 1;
     display: flex;
     align-items: center;
     gap: 14px;
     font-size: 0.8125rem;
     color: var(--muted);
   }
-  /* Negative margin cancels the first button's padding so "top" stays flush left. */
+  /* Negative margin cancels the first button's padding so "top" aligns flush
+     with the content column below the hairline. */
   .controls .align { display: flex; gap: 8px; margin-left: -6px; }
   /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
   .controls .align button,
@@ -347,7 +359,7 @@
   .new-slide {
     display: block;
     margin: 8px 0 48px 32px;
-    padding-left: var(--indent);
+    padding-left: var(--num-col);
     font-size: 1.125rem;
     color: var(--muted);
   }
@@ -358,11 +370,8 @@
     .masthead .title { font-size: 1.875rem; }
     .masthead-status { padding: 8px 18px 0; }
     .slide-stack { padding: 16px 18px 0; }
-    .slide-row { gap: 20px; }
-    .slide-row .num { font-size: 2.125rem; }
-    .slide-row .snippet, #slide-text { font-size: 1.5rem; }
-    /* Number column (~41px at 34px mono) + row gap (20px) = 61px. */
-    .new-slide { margin-left: 18px; font-size: 1rem; padding-left: 61px; }
+    .slide-body .snippet, #slide-text { font-size: 1.5rem; }
+    .new-slide { margin-left: 18px; font-size: 1rem; }
   }
 </style>
 </head>
@@ -750,21 +759,9 @@ document.getElementById('settings').addEventListener('click', (e) => {
 
 // ---- Slide stack ----
 
-// Build the inline editor (textarea + controls) for the open slide.
-function buildSlideEditor(slide) {
-  const wrap = document.createElement('div');
-  wrap.className = 'slide-editor';
-
-  const ta = document.createElement('textarea');
-  ta.id = 'slide-text';
-  ta.spellcheck = false;
-  ta.placeholder = 'Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.';
-  ta.value = slide.text;
-  // Grow the textarea to fit its content so editing never changes the row's
-  // height; also sized after render (see renderSlideList) once it has layout.
-  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); autosizeTextarea(ta); });
-  wrap.appendChild(ta);
-
+// Build the align/delete controls that sit beside the number in the open
+// slide's header.
+function buildControls(slide) {
   const controls = document.createElement('div');
   controls.className = 'controls';
 
@@ -797,19 +794,37 @@ function buildSlideEditor(slide) {
     controls.appendChild(del);
   }
 
-  wrap.appendChild(controls);
-  return wrap;
+  return controls;
 }
 
-// Render the full stack: every slide is a numbered row showing its full text;
-// the selected slide swaps that for an inline editor (textarea + controls).
+// Build the editable textarea for the open slide's body.
+function buildTextarea(slide) {
+  const ta = document.createElement('textarea');
+  ta.id = 'slide-text';
+  ta.spellcheck = false;
+  ta.placeholder = 'Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.';
+  ta.value = slide.text;
+  // Grow the textarea to fit its content so editing never changes the row's
+  // height; also sized after render (see renderSlideList) once it has layout.
+  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); autosizeTextarea(ta); });
+  return ta;
+}
+
+// Render the full stack. Every slide is a row: a header (number + controls
+// over a hairline) followed by the body. The selected slide shows align/delete
+// controls in its header and an editable textarea in its body; inactive slides
+// show just the number and their full text, which opens for editing on click.
 function renderSlideList() {
   listEl.innerHTML = '';
   deck.slides.forEach((slide, i) => {
+    const open = slide.id === deck.currentSlideId;
     const li = document.createElement('li');
-    li.className = 'slide-row' + (slide.id === deck.currentSlideId ? ' selected' : '');
+    li.className = 'slide-row' + (open ? ' selected' : '');
     li.dataset.id = slide.id;
     li.dataset.index = String(i);
+
+    const head = document.createElement('div');
+    head.className = 'slide-head';
 
     // The number is a drag handle for mouse users and a reorder control for
     // keyboard users (ArrowUp/ArrowDown move the slide; see onNumKey).
@@ -822,18 +837,26 @@ function renderSlideList() {
     num.textContent = padded;
     num.draggable = true;   // drag the number to reorder
     num.setAttribute('aria-label', 'Slide ' + padded + '. Use arrow up or down to reorder');
-    li.appendChild(num);
+    head.appendChild(num);
 
-    if (slide.id === deck.currentSlideId) {
-      li.appendChild(buildSlideEditor(slide));
+    // Controls show only for the open slide.
+    if (open) head.appendChild(buildControls(slide));
+    li.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'slide-body';
+    if (open) {
+      body.appendChild(buildTextarea(slide));
     } else {
       const snip = document.createElement('button');
       snip.type = 'button';
       snip.className = 'snippet';
       setSnippet(snip, slide.text);
       snip.setAttribute('aria-label', 'Edit slide ' + (i + 1) + ': ' + (snippetFor(slide.text) || 'empty slide'));
-      li.appendChild(snip);
+      body.appendChild(snip);
     }
+    li.appendChild(body);
+
     listEl.appendChild(li);
   });
   // The textarea is now in the document, so scrollHeight is meaningful.
