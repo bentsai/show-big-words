@@ -1102,21 +1102,16 @@
                 // Alignment is derived from the text (see parseSlide), so these are
                 // read-only indicators of the detected state, not buttons that set it.
                 // You change alignment by padding the text with blank lines.
-                const detected = parseSlide(slide.text).align;
                 const alignWrap = document.createElement("span");
                 alignWrap.className = "align";
                 alignWrap.setAttribute("role", "status");
-                alignWrap.setAttribute(
-                    "aria-label",
-                    "Vertical alignment: " + detected,
-                );
                 ["top", "center", "bottom"].forEach((a) => {
                     const word = document.createElement("span");
                     word.dataset.align = a;
                     word.textContent = a;
-                    if (detected === a) word.classList.add("on");
                     alignWrap.appendChild(word);
                 });
+                lightAlign(alignWrap, parseSlide(slide.text).align);
                 controls.appendChild(alignWrap);
 
                 // Delete is hidden when only one slide remains. There is no Duplicate.
@@ -1134,16 +1129,19 @@
                 return controls;
             }
 
-            // Re-light the align indicator from the current text as the user types,
-            // without rebuilding the whole row (which would steal textarea focus).
-            function refreshAlignIndicator(text) {
-                const wrap = listEl.querySelector(".slide-row.selected .align");
-                if (!wrap) return;
-                const detected = parseSlide(text).align;
+            // Light the detected option in an align indicator and dim the rest.
+            function lightAlign(wrap, detected) {
                 wrap.setAttribute("aria-label", "Vertical alignment: " + detected);
                 wrap.querySelectorAll("[data-align]").forEach((w) =>
                     w.classList.toggle("on", w.dataset.align === detected),
                 );
+            }
+
+            // Re-light the open slide's indicator from the current text as the user
+            // types, in place — rebuilding the row would steal textarea focus.
+            function refreshAlignIndicator(text) {
+                const wrap = listEl.querySelector(".slide-row.selected .align");
+                if (wrap) lightAlign(wrap, parseSlide(text).align);
             }
 
             // Build the editable textarea for the open slide's body.
