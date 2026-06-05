@@ -324,7 +324,9 @@
                 grid-template-columns: var(--num-col) 1fr;
             }
             .slide-head {
-                align-items: center;
+                /* Align the number's baseline with the controls' text baseline,
+       rather than centering the two boxes (whose heights differ). */
+                align-items: baseline;
                 padding-bottom: 8px;
                 border-bottom: 1px solid var(--hairline);
             }
