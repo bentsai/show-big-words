@@ -757,10 +757,10 @@
                         /\(\((.+?)\)\)/g,
                         '<span class="annotation">$1</span>',
                     );
-                    if (annotated.startsWith("\t"))
+                    if (annotated.startsWith("  "))
                         return (
                             '<div class="center">' +
-                            annotated.replace(/^\t+/, "") +
+                            annotated.replace(/^ +/, "") +
                             "</div>"
                         );
                     return "<div>" + annotated + "</div>";
@@ -1168,7 +1168,7 @@
                 // taller than its inactive snippet and shift the layout on open.
                 ta.rows = 1;
                 ta.placeholder =
-                    "Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.";
+                    "Type slide text. Blank line makes subtext. Two leading spaces center a line. ((parentheses)) make an annotation.";
                 ta.value = slide.text;
                 // Grow the textarea to fit its content so editing never changes the row's
                 // height; also sized after render (see renderSlideList) once it has layout.

@@ -524,8 +524,8 @@ test.describe('presentation', () => {
     expect(result.sub).toBe(Math.round(result.main / 2));
   });
 
-  test('tab-indented line renders centered', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: '\tcentered line\nnot centered', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+  test('line with two leading spaces renders centered', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: '  centered line\nnot centered', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
     await present(page);
     const result = await page.evaluate(() => {
       const text = document.getElementById('text');
