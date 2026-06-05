@@ -47,6 +47,22 @@ function readDeck(page) {
   }, STORAGE_KEY);
 }
 
+// Reorder by dragging a slide number. Native draggable DnD is not reliably
+// driven by Playwright's mouse-based dragTo, so we dispatch the exact HTML5
+// drag events the app listens for: dragstart on the .num, drop on the target row.
+async function dragNumber(page, fromIndex, toIndex) {
+  await page.evaluate(({ fromIndex, toIndex }) => {
+    const rows = document.querySelectorAll('.slide-row');
+    const num = rows[fromIndex].querySelector('.num');
+    const target = rows[toIndex];
+    const dt = new DataTransfer();
+    num.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+    num.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+  }, { fromIndex, toIndex });
+}
+
 // ---------------------------------------------------------------------
 // Data model
 // ---------------------------------------------------------------------
@@ -78,56 +94,58 @@ test.describe('data model', () => {
     await expect(page.locator('#slide-text')).toHaveValue('Ship');
   });
 
-  test('new and duplicate preserve a valid selection', async ({ page }) => {
+  test('new slide creates an empty, selected slide', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#slide-text').fill('Alpha');
-    await page.locator('#btn-dup').click();
+    await page.locator('#btn-new').click();
     await expect(page.locator('.slide-row')).toHaveCount(2);
-    // Duplicate is selected and carries the same text.
-    await expect(page.locator('#slide-text')).toHaveValue('Alpha');
+    // The new slide is selected, empty, and numbered 2.
+    await expect(page.locator('#slide-text')).toHaveValue('');
     await expect(page.locator('.slide-row.selected .num')).toHaveText('2');
 
     const deck = await readDeck(page);
-    expect(deck.slides[0].id).not.toBe(deck.slides[1].id);
+    expect(deck.slides[0].text).toBe('Alpha');
+    expect(deck.slides[1].text).toBe('');
     expect(deck.currentSlideId).toBe(deck.slides[1].id);
   });
 
-  test('delete is disabled at one slide and keeps a valid selection otherwise', async ({ page }) => {
+  test('delete is hidden at one slide and removes the current slide otherwise', async ({ page }) => {
     await freshLoad(page);
-    await expect(page.locator('#btn-del')).toBeDisabled();
+    await expect(page.locator('.delete')).toHaveCount(0);
 
     await page.locator('#btn-new').click();
     await page.locator('#slide-text').fill('Two');
-    await expect(page.locator('#btn-del')).toBeEnabled();
+    await expect(page.locator('.delete')).toBeVisible();
 
-    await page.locator('#btn-del').click();
+    await page.locator('.delete').click();
     await expect(page.locator('.slide-row')).toHaveCount(1);
-    await expect(page.locator('#btn-del')).toBeDisabled();
+    await expect(page.locator('.delete')).toHaveCount(0);
     const deck = await readDeck(page);
     expect(deck.slides.some(s => s.id === deck.currentSlideId)).toBe(true);
   });
 
-  test('move and drag reorder keep selection on the moved slide', async ({ page }) => {
+  test('drag-number reorder keeps selection on the moved slide', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#slide-text').fill('One');
     await page.locator('#btn-new').click();
     await page.locator('#slide-text').fill('Two');
 
-    // Slide 2 ("Two") is selected; move it up.
-    await page.locator('#btn-prev').click();
-    await expect(page.locator('.slide-row').first()).toContainText('Two');
-    await expect(page.locator('.slide-row.selected')).toContainText('Two');
+    // Slide 2 ("Two") is selected; drag its number above slide 1.
+    await dragNumber(page, 1, 0);
 
     const deck = await readDeck(page);
     expect(deck.slides[0].text).toBe('Two');
     expect(deck.slides[1].text).toBe('One');
+    // Selection follows the moved slide, now at the top and open for editing.
+    expect(deck.currentSlideId).toBe(deck.slides[0].id);
+    await expect(page.locator('.slide-row.selected #slide-text')).toHaveValue('Two');
   });
 
-  test('settings persist independently of slide text', async ({ page }) => {
+  test('settings cycle on click and persist independently of slide text', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#set-theme').selectOption('ink');
-    await page.locator('#set-font').selectOption('mono');
-    await page.locator('#set-transition').selectOption('wipe');
+    await page.locator('#set-theme').click();       // paper -> ink
+    await page.locator('#set-font').click();         // sans -> mono
+    await page.locator('#set-transition').click();   // none -> wipe
     await page.locator('#slide-text').fill('Body changed');
 
     const deck = await readDeck(page);
@@ -138,24 +156,66 @@ test.describe('data model', () => {
   test('reload restores the deck from localStorage', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#slide-text').fill('Persisted');
-    await page.locator('#set-theme').selectOption('ink');
+    await page.locator('#set-theme').click(); // paper -> ink
 
     await page.reload();
     await page.waitForSelector('.slide-row.selected');
     await expect(page.locator('#slide-text')).toHaveValue('Persisted');
-    await expect(page.locator('#set-theme')).toHaveValue('ink');
+    await expect(page.locator('#set-theme')).toHaveText('ink');
   });
 
   test('per-slide align is stored and restored', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('#align-seg button[data-align="top"]').click();
-    await expect(page.locator('#align-seg button[data-align="top"]')).toHaveClass(/on/);
+    await page.locator('button[data-align="top"]').click();
+    await expect(page.locator('button[data-align="top"]')).toHaveClass(/on/);
     let deck = await readDeck(page);
     expect(deck.slides[0].align).toBe('top');
 
     await page.reload();
     await page.waitForSelector('.slide-row.selected');
-    await expect(page.locator('#align-seg button[data-align="top"]')).toHaveClass(/on/);
+    await expect(page.locator('button[data-align="top"]')).toHaveClass(/on/);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Editor interactions (new for the manuscript redesign)
+// ---------------------------------------------------------------------
+
+test.describe('editor interactions', () => {
+  test('clicking a collapsed slide opens it and collapses the previous one', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'First', align: 'center' },
+      { id: 'slide-2', text: 'Second', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+
+    // Slide 1 is open initially.
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('1');
+    await expect(page.locator('#slide-text')).toHaveValue('First');
+
+    // Open slide 2 by clicking its collapsed row.
+    await page.locator('.slide-row').nth(1).click();
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('2');
+    await expect(page.locator('#slide-text')).toHaveValue('Second');
+    // Exactly one textarea is open at a time.
+    await expect(page.locator('#slide-text')).toHaveCount(1);
+    // Slide 1 is now collapsed to its snippet.
+    await expect(page.locator('.slide-row').nth(0).locator('.snippet')).toHaveText('First');
+  });
+
+  test('clicking a settings word cycles to the next value and persists', async ({ page }) => {
+    await freshLoad(page);
+    await expect(page.locator('#set-transition')).toHaveText('no transition');
+    await page.locator('#set-transition').click();
+    await expect(page.locator('#set-transition')).toHaveText('wipe transition');
+    const deck = await readDeck(page);
+    expect(deck.settings.transition).toBe('wipe');
+  });
+
+  test('no Duplicate control exists', async ({ page }) => {
+    await freshLoad(page);
+    await expect(page.locator('#btn-dup')).toHaveCount(0);
+    const text = await page.evaluate(() => document.body.innerText);
+    expect(text.toLowerCase()).not.toContain('duplicate');
   });
 });
 
@@ -168,7 +228,7 @@ test.describe('url sharing', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await freshLoad(page);
     await page.locator('#slide-text').fill('Shared');
-    await page.locator('#set-theme').selectOption('ink');
+    await page.locator('#set-theme').click(); // paper -> ink
     await page.locator('#btn-share').click();
 
     const clip = await page.evaluate(() => navigator.clipboard.readText());
@@ -200,7 +260,7 @@ test.describe('url sharing', () => {
 
     await expect(page.locator('.slide-row')).toHaveCount(2);
     await expect(page.locator('#slide-text')).toHaveValue('Imported one');
-    await expect(page.locator('#set-font')).toHaveValue('serif');
+    await expect(page.locator('#set-font')).toHaveText('serif');
 
     // Hash is cleared and the imported deck is now in localStorage.
     expect(page.url()).not.toContain('#deck=');
@@ -364,7 +424,7 @@ test.describe('presentation', () => {
     await page.waitForSelector('#editor:not(.hidden)');
     const deck = await readDeck(page);
     expect(deck.settings.font).toBe('sans');
-    await expect(page.locator('#set-font')).toHaveValue('sans');
+    await expect(page.locator('#set-font')).toHaveText('sans');
   });
 
   test('t key cycles themes ephemerally (deck unchanged)', async ({ page }) => {
