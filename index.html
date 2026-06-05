@@ -327,6 +327,12 @@
                 /* Align the number's baseline with the controls' text baseline,
        rather than centering the two boxes (whose heights differ). */
                 align-items: baseline;
+                /* Pin the height to the number's own line box (2rem) + padding + border.
+       Under baseline alignment the controls' taller touch-target box would
+       otherwise push the head down only on the open slide, shifting the
+       layout when toggling between editing and preview. A fixed height keeps
+       the head the same size whether or not the controls are present. */
+                height: calc(2rem + 8px + 1px);
                 padding-bottom: 8px;
                 border-bottom: 1px solid var(--hairline);
             }
