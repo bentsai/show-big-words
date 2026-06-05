@@ -420,6 +420,11 @@ const THEMES = ['paper', 'ink', 'presenter', 'gradient'];
 const TRANSITIONS = ['none', 'wipe'];
 const PRESENTER_COLORS = ['blue', 'purple', 'pink', 'red', 'orange', 'ink', 'paper'];
 
+// Next value after `cur` in `list`, wrapping back to the start.
+function nextInCycle(list, cur) {
+  return list[(list.indexOf(cur) + 1) % list.length];
+}
+
 // Ephemeral present-mode state. These never write back to the deck.
 let presentSlides = [];
 let currentIndex = 0;
@@ -430,10 +435,10 @@ let currentTransition = 'none';
 function applyFont(font) {
   currentFont = font;
   const root = document.documentElement;
+  // Each non-default font maps to a `font-<value>` class; 'sans' is the
+  // default and carries no class.
   root.classList.remove('font-mono', 'font-serif', 'font-pixel');
-  if (font === 'mono') root.classList.add('font-mono');
-  if (font === 'serif') root.classList.add('font-serif');
-  if (font === 'pixel') root.classList.add('font-pixel');
+  if (font !== 'sans') root.classList.add('font-' + font);
 }
 
 function applyTheme(theme) {
@@ -732,8 +737,7 @@ function renderSettings() {
 function cycleSetting(kind) {
   const list = SETTING_LISTS[kind];
   if (!list) return;
-  const cur = deck.settings[kind];
-  deck.settings[kind] = list[(list.indexOf(cur) + 1) % list.length];
+  deck.settings[kind] = nextInCycle(list, deck.settings[kind]);
   saveDeck();
   renderSettings();
 }
@@ -985,12 +989,12 @@ function onPresentKey(e) {
       e.preventDefault();
       break;
     case 'f':
-      applyFont(FONTS[(FONTS.indexOf(currentFont) + 1) % FONTS.length]);
+      applyFont(nextInCycle(FONTS, currentFont));
       renderSlide();
       e.preventDefault();
       break;
     case 't':
-      applyTheme(THEMES[(THEMES.indexOf(currentTheme) + 1) % THEMES.length]);
+      applyTheme(nextInCycle(THEMES, currentTheme));
       renderSlide();
       e.preventDefault();
       break;
