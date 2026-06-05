@@ -345,7 +345,6 @@
                 text-align: left;
                 letter-spacing: -0.02em;
                 color: var(--muted);
-                cursor: grab;
                 user-select: none;
             }
             .slide-row.selected .slide-head .num {
@@ -424,20 +423,43 @@
                 font-size: 0.8125rem;
                 color: var(--muted);
             }
-            /* Negative margin cancels the first button's padding so "top" aligns flush
-     with the content column below the hairline. */
             .controls .align {
                 display: flex;
                 gap: 8px;
-                margin-left: -6px;
             }
             /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
+            .controls .insert,
+            .controls .move,
             .controls .align button,
             .controls .delete {
                 display: inline-flex;
                 align-items: center;
                 min-height: 24px;
                 padding: 0 6px;
+            }
+            /* Negative margin cancels the leading control's padding so "insert" aligns
+     flush with the content column below the hairline. */
+            .controls .insert {
+                margin-left: -6px;
+            }
+            .controls .insert,
+            .controls .move {
+                color: var(--muted);
+            }
+            .controls .insert:hover,
+            .controls .move:hover {
+                color: var(--ink);
+            }
+            /* The move control is the drag handle, so it gets the grab cursor the
+     number used to carry. */
+            .controls .move {
+                cursor: grab;
+            }
+            .controls .move:active {
+                cursor: grabbing;
+            }
+            .controls .dot {
+                color: var(--muted);
             }
             .controls .align button {
                 color: var(--muted);
@@ -1027,6 +1049,36 @@
                 const controls = document.createElement("div");
                 controls.className = "controls";
 
+                // Insert and move both act on the deck (add a slide after this one,
+                // reorder this one), so they lead the row as a group and are set off by
+                // a separator from the alignment group, which formats slide content.
+                const insert = document.createElement("button");
+                insert.type = "button";
+                insert.className = "insert";
+                insert.textContent = "↑ insert slide";
+                insert.addEventListener("click", newSlide);
+                controls.appendChild(insert);
+
+                // Move is the reorder affordance: drag it (mouse) or focus it and press
+                // ArrowUp/ArrowDown (keyboard). It lives in the controls rather than on
+                // the number, which is only a position label and renumbers on every move.
+                const move = document.createElement("button");
+                move.type = "button";
+                move.className = "move";
+                move.textContent = "↕ move";
+                move.draggable = true;
+                move.setAttribute(
+                    "aria-label",
+                    "Move slide. Use arrow up or down to reorder",
+                );
+                controls.appendChild(move);
+
+                const sep = document.createElement("span");
+                sep.className = "dot";
+                sep.setAttribute("aria-hidden", "true");
+                sep.textContent = "·";
+                controls.appendChild(sep);
+
                 const alignWrap = document.createElement("span");
                 alignWrap.className = "align";
                 ["top", "center", "bottom"].forEach((a) => {
@@ -1101,20 +1153,14 @@
                     const head = document.createElement("div");
                     head.className = "slide-head";
 
-                    // The number is a drag handle for mouse users and a reorder control for
-                    // keyboard users (ArrowUp/ArrowDown move the slide; see onNumKey).
-                    const num = document.createElement("button");
-                    num.type = "button";
+                    // The number is just a position label — not part of the slide, and
+                    // not interactive. Reordering lives in the "move" control instead,
+                    // so dragging never starts from this constantly-renumbering label.
+                    const num = document.createElement("span");
                     num.className = "num";
-                    // Zero-padded display (01, 02, …). The accessible name must contain the
-                    // visible "01" text (WCAG 2.5.3 Label in Name), so reuse the padded form.
+                    // Zero-padded display (01, 02, …).
                     const padded = String(i + 1).padStart(2, "0");
                     num.textContent = padded;
-                    num.draggable = true; // drag the number to reorder
-                    num.setAttribute(
-                        "aria-label",
-                        "Slide " + padded + ". Use arrow up or down to reorder",
-                    );
                     head.appendChild(num);
 
                     // Controls show only for the open slide.
@@ -1186,9 +1232,9 @@
             }
 
             listEl.addEventListener("dragstart", (e) => {
-                const num = e.target.closest(".num");
-                if (!num) return;
-                const row = num.closest(".slide-row");
+                const handle = e.target.closest(".move");
+                if (!handle) return;
+                const row = handle.closest(".slide-row");
                 dragFrom = Number(row.dataset.index);
                 e.dataTransfer.effectAllowed = "move";
                 // Some browsers require data to be set for drag to start.
@@ -1226,21 +1272,21 @@
                 dragFrom = null;
             });
 
-            // ---- Keyboard reorder: focus a slide number, then ArrowUp/ArrowDown ----
+            // ---- Keyboard reorder: focus a slide's "move" control, then ArrowUp/ArrowDown ----
 
             listEl.addEventListener("keydown", (e) => {
-                const num = e.target.closest(".num");
-                if (!num) return;
+                const handle = e.target.closest(".move");
+                if (!handle) return;
                 if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
                 e.preventDefault();
-                const from = Number(num.closest(".slide-row").dataset.index);
+                const from = Number(handle.closest(".slide-row").dataset.index);
                 const to = e.key === "ArrowUp" ? from - 1 : from + 1;
                 if (to < 0 || to >= deck.slides.length) return;
                 reorderSlide(from, to);
-                // renderSlideList rebuilt the rows; move focus to the moved slide's number
-                // so a sequence of arrow presses keeps walking the same slide.
+                // renderSlideList rebuilt the rows; move focus to the moved slide's "move"
+                // control so a sequence of arrow presses keeps walking the same slide.
                 const moved = listEl.querySelector(
-                    '.slide-row[data-index="' + to + '"] .num',
+                    '.slide-row[data-index="' + to + '"] .move',
                 );
                 if (moved) moved.focus();
             });
