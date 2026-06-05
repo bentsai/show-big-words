@@ -202,6 +202,28 @@ test.describe('editor interactions', () => {
     await expect(page.locator('.slide-row').nth(0).locator('.snippet')).toHaveText('First');
   });
 
+  test('slide body height does not shift between active and inactive', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'One line of text', align: 'center' },
+      { id: 'slide-2', text: 'Line one\nLine two\nLine three', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+
+    const bodyHeight = (index) => page.evaluate((i) =>
+      Math.round(document.querySelector('.slide-row[data-index="' + i + '"] .slide-body').getBoundingClientRect().height), index);
+
+    // Slide 1 (one line) open vs collapsed.
+    const oneLineActive = await bodyHeight(0);
+    await page.locator('.slide-row').nth(1).click();   // open slide 2, collapses slide 1
+    const oneLineInactive = await bodyHeight(0);
+    expect(oneLineActive).toBe(oneLineInactive);
+
+    // Slide 2 (three lines) open vs collapsed.
+    const multiActive = await bodyHeight(1);
+    await page.locator('.slide-row').nth(0).click();   // open slide 1, collapses slide 2
+    const multiInactive = await bodyHeight(1);
+    expect(multiActive).toBe(multiInactive);
+  });
+
   test('clicking a settings word cycles to the next value and persists', async ({ page }) => {
     await freshLoad(page);
     await expect(page.locator('#set-transition')).toHaveText('no transition');

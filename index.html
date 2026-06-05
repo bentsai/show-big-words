@@ -332,7 +332,7 @@
                 font-family: var(--font-sans);
                 font-variant-numeric: tabular-nums;
                 font-size: 2rem;
-                font-weight: 600;
+                font-weight: 400;
                 line-height: 1;
                 text-align: left;
                 letter-spacing: -0.02em;
@@ -1060,6 +1060,10 @@
                 const ta = document.createElement("textarea");
                 ta.id = "slide-text";
                 ta.spellcheck = false;
+                // rows=1 sets the autosize floor: a textarea's default rows=2 keeps
+                // scrollHeight at two lines, so a one-line slide would render 30px
+                // taller than its inactive snippet and shift the layout on open.
+                ta.rows = 1;
                 ta.placeholder =
                     "Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.";
                 ta.value = slide.text;
