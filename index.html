@@ -264,6 +264,15 @@
                 font-size: 0.8125rem;
                 color: var(--muted);
             }
+            /* Brackets fence the three settings into one unit, so the adjacent
+               "share url" button doesn't read as a fourth setting. As flex
+               children they pick up the gap and muted color automatically. */
+            .settings::before {
+                content: "[";
+            }
+            .settings::after {
+                content: "]";
+            }
             .set-word {
                 color: var(--muted);
             }
