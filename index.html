@@ -270,18 +270,18 @@
   .slide-row .snippet {
     flex: 1;
     min-width: 0;
-    /* Snippet is slide content: keep it in the slide's mono face, normal weight. */
+    /* Inactive slides show their full text in the slide's mono face, so the
+       whole deck reads at a glance; clicking one opens it for editing. */
     font-family: var(--ed-mono);
     font-size: 2.125rem;
     font-weight: 400;
-    line-height: 1.1;
+    line-height: 1.25;
     letter-spacing: -0.02em;
     text-align: left;
     color: var(--slide-gray);
     cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
   }
   .slide-row .snippet:hover { color: var(--ink); }
   .slide-row .snippet.empty { font-style: italic; opacity: 0.7; }
@@ -295,11 +295,14 @@
   }
   #slide-text {
     width: 100%;
-    min-height: 30vh;
-    resize: vertical;
+    /* Height is set to fit content by autosizeTextarea() in JS, so opening a slide for
+       editing matches the height of its full-text view — no expand/collapse. */
+    height: auto;
+    overflow: hidden;
+    resize: none;
     border: none;
     /* Padding + matching negative margin: gives the focus background some
-       breathing room while keeping the text flush with the collapsed snippets. */
+       breathing room while keeping the text flush with the inactive slides. */
     padding: 8px 12px;
     margin: -8px -12px;
     background: none;
@@ -358,7 +361,6 @@
     .slide-row { gap: 20px; }
     .slide-row .num { font-size: 2.125rem; }
     .slide-row .snippet, #slide-text { font-size: 1.5rem; }
-    #slide-text { min-height: 24vh; }
     /* Number column (~41px at 34px mono) + row gap (20px) = 61px. */
     .new-slide { margin-left: 18px; font-size: 1rem; padding-left: 61px; }
   }
@@ -713,11 +715,10 @@ function snippetFor(text) {
   return (text.split('\n').find(l => l.trim() !== '') || '').trim();
 }
 
-// Fill a collapsed row's snippet from slide text, marking empty slides.
+// Fill an inactive row from slide text, showing it in full, marking empties.
 function setSnippet(el, text) {
-  const snippet = snippetFor(text);
-  el.textContent = snippet || 'Empty slide';
-  el.classList.toggle('empty', !snippet);
+  el.textContent = text || 'Empty slide';
+  el.classList.toggle('empty', !text.trim());
 }
 
 // ---- Settings summary (click to cycle) ----
@@ -759,7 +760,9 @@ function buildSlideEditor(slide) {
   ta.spellcheck = false;
   ta.placeholder = 'Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.';
   ta.value = slide.text;
-  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); });
+  // Grow the textarea to fit its content so editing never changes the row's
+  // height; also sized after render (see renderSlideList) once it has layout.
+  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); autosizeTextarea(ta); });
   wrap.appendChild(ta);
 
   const controls = document.createElement('div');
@@ -798,8 +801,8 @@ function buildSlideEditor(slide) {
   return wrap;
 }
 
-// Render the full stack: every slide is a numbered row; the selected slide is
-// expanded inline (textarea + controls), all others collapse to a snippet.
+// Render the full stack: every slide is a numbered row showing its full text;
+// the selected slide swaps that for an inline editor (textarea + controls).
 function renderSlideList() {
   listEl.innerHTML = '';
   deck.slides.forEach((slide, i) => {
@@ -833,11 +836,19 @@ function renderSlideList() {
     }
     listEl.appendChild(li);
   });
+  // The textarea is now in the document, so scrollHeight is meaningful.
+  const ta = document.getElementById('slide-text');
+  if (ta) autosizeTextarea(ta);
 }
 
 function renderEditor() {
   renderSettings();
   renderSlideList();
+}
+
+function autosizeTextarea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
 }
 
 function focusTextarea() {
