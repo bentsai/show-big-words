@@ -673,17 +673,14 @@ function setSnippet(el, text) {
 
 const SETTING_LISTS = { theme: THEMES, font: FONTS, transition: TRANSITIONS };
 
-// Map a stored setting value to its friendly display word. Stored values are
-// unchanged; only the label differs (notably the transition values).
-function settingLabel(kind, value) {
-  if (kind === 'transition') return value === 'wipe' ? 'wipe transition' : 'no transition';
-  return value;
-}
+// Theme and font display their stored value verbatim; only transition shows a
+// friendlier label. Stored values are unchanged.
+const TRANSITION_LABELS = { none: 'no transition', wipe: 'wipe transition' };
 
 function renderSettings() {
-  themeWord.textContent = settingLabel('theme', deck.settings.theme);
-  fontWord.textContent = settingLabel('font', deck.settings.font);
-  transitionWord.textContent = settingLabel('transition', deck.settings.transition);
+  themeWord.textContent = deck.settings.theme;
+  fontWord.textContent = deck.settings.font;
+  transitionWord.textContent = TRANSITION_LABELS[deck.settings.transition];
 }
 
 function cycleSetting(kind) {
