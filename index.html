@@ -624,7 +624,8 @@
                 return list[(list.indexOf(cur) + 1) % list.length];
             }
 
-            // Ephemeral present-mode state. These never write back to the deck.
+            // Present-mode working state. currentFont/currentTheme mirror deck.settings
+            // and are persisted back when cycled with f/t; the rest are ephemeral.
             let presentSlides = [];
             let currentIndex = 0;
             let currentFont = "sans";
@@ -1329,8 +1330,9 @@
 
             function enterPresent() {
                 presenting = true;
-                // Snapshot the deck into ephemeral present state. Cycling f/t/b below
-                // mutates only these vars, never deck.settings.
+                // Snapshot the slide text into ephemeral present state. Cycling f/t
+                // writes the new font/theme back to deck.settings (it persists); only
+                // b (blackout) stays ephemeral.
                 presentSlides = deck.slides.map((s) => ({
                     text: s.text,
                 }));
@@ -1362,7 +1364,8 @@
                 presentEl.classList.add("hidden");
                 editorEl.classList.remove("hidden");
 
-                // Restore the editor's saved theme/font (present cycling was ephemeral).
+                // Re-apply the deck's theme/font. Present-mode f/t already persisted
+                // any changes here, so this just keeps the editor in sync.
                 applyFont(deck.settings.font);
                 applyTheme(deck.settings.theme);
                 renderEditor();
@@ -1401,13 +1404,22 @@
                         renderSlide("forward");
                         e.preventDefault();
                         break;
+                    // f/t cycle font/theme and persist to the deck (see enterPresent):
+                    // applyFont/applyTheme update currentFont/currentTheme, which we
+                    // then write back so the choice survives exit and reload.
                     case "f":
                         applyFont(nextInCycle(FONTS, currentFont));
+                        deck.settings.font = currentFont;
+                        saveDeck();
+                        renderSettings();
                         renderSlide();
                         e.preventDefault();
                         break;
                     case "t":
                         applyTheme(nextInCycle(THEMES, currentTheme));
+                        deck.settings.theme = currentTheme;
+                        saveDeck();
+                        renderSettings();
                         renderSlide();
                         e.preventDefault();
                         break;

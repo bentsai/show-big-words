@@ -427,7 +427,7 @@ test.describe('presentation', () => {
     await expect(page.locator('#text')).toHaveText('One');
   });
 
-  test('f key cycles fonts ephemerally (deck unchanged)', async ({ page }) => {
+  test('f key cycles fonts and persists to the deck', async ({ page }) => {
     await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
     await present(page);
     const getFont = () => page.evaluate(() => {
@@ -441,15 +441,15 @@ test.describe('presentation', () => {
     await page.keyboard.press('f');
     expect(await getFont()).toBe('mono');
 
-    // Exit and confirm the saved deck font was not changed.
+    // Exit and confirm the new font was saved to the deck and editor.
     await page.keyboard.press('Escape');
     await page.waitForSelector('#editor:not(.hidden)');
     const deck = await readDeck(page);
-    expect(deck.settings.font).toBe('sans');
-    await expect(page.locator('#set-font')).toHaveText('sans');
+    expect(deck.settings.font).toBe('mono');
+    await expect(page.locator('#set-font')).toHaveText('mono');
   });
 
-  test('t key cycles themes ephemerally (deck unchanged)', async ({ page }) => {
+  test('t key cycles themes and persists to the deck', async ({ page }) => {
     await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
     await present(page);
     const getBg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -460,7 +460,8 @@ test.describe('presentation', () => {
     await page.keyboard.press('Escape');
     await page.waitForSelector('#editor:not(.hidden)');
     const deck = await readDeck(page);
-    expect(deck.settings.theme).toBe('paper');
+    expect(deck.settings.theme).toBe('ink');
+    await expect(page.locator('#set-theme')).toHaveText('ink');
   });
 
   test('b key toggles text visibility', async ({ page }) => {
