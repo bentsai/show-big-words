@@ -6,7 +6,7 @@
 <title>big-words</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -71,7 +71,7 @@
   }
 
   /* The slide font/theme variables only style present-mode layers, not the
-     editor chrome, so the editor keeps its own fixed brutalist styling. */
+     editor chrome, so the editor keeps its own fixed manuscript styling. */
   .layer {
     position: fixed;
     inset: 0;
@@ -138,215 +138,183 @@
     opacity: 0.65;
   }
 
-  /* ---- Editor chrome (brutalist, typography-driven) ---- */
+  /* ---- Editor chrome (manuscript, type-driven) ---- */
 
   :root {
-    --ed-bg: #ffffff;
-    --ed-fg: #111111;
-    --ed-line: #111111;
-    --ed-muted: #767676;
-    --ed-sel: #111111;
-    --ed-sel-fg: #ffffff;
+    --paper: #faf9f6;
+    --ink: #1a1a1a;
+    --muted: #999999;
+    --slide-gray: #9a9a93;
+    --hairline: rgba(26, 26, 26, 0.12);
     --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
+    --indent: calc(2ch + 20px);   /* number column + gap, for aligning loose items */
   }
 
   #editor {
     position: fixed;
     inset: 0;
-    display: grid;
-    grid-template-rows: auto 1fr;
-    background: var(--ed-bg);
-    color: var(--ed-fg);
+    overflow-y: auto;
+    background: var(--paper);
+    color: var(--ink);
     font-family: var(--ed-mono);
+    -webkit-font-smoothing: antialiased;
   }
   #editor.hidden { display: none; }
   #present.hidden { display: none; }
 
-  .toolbar {
+  /* Masthead: title + settings summary + share + Present. One hairline below. */
+  .masthead {
     display: flex;
-    align-items: stretch;
-    gap: 0;
-    border-bottom: 2px solid var(--ed-line);
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px 32px;
+    flex-wrap: wrap;
+    padding: 24px 32px 18px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .masthead .title {
+    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .masthead-right {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
     flex-wrap: wrap;
   }
-  .toolbar .brand {
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    font-weight: 600;
-    font-size: 15px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    border-right: 2px solid var(--ed-line);
-  }
-  .toolbar .settings {
-    display: flex;
-    align-items: stretch;
-  }
-  .toolbar .field {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    border-right: 1px solid var(--ed-line);
-  }
-  .toolbar .field label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--ed-muted);
-  }
-  .toolbar select {
-    font-family: var(--ed-mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ed-fg);
-    background: var(--ed-bg);
-    border: 1px solid var(--ed-line);
-    padding: 3px 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .toolbar .spacer { flex: 1; }
-  .toolbar .actions {
-    display: flex;
-    align-items: stretch;
-    border-left: 2px solid var(--ed-line);
-  }
 
+  /* Flat, borderless buttons everywhere except the filled Present button. */
   button {
-    font-family: var(--ed-mono);
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--ed-fg);
-    background: var(--ed-bg);
-    border: 1px solid var(--ed-line);
-    padding: 8px 14px;
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
     cursor: pointer;
   }
-  button:hover:not(:disabled) {
-    background: var(--ed-sel);
-    color: var(--ed-sel-fg);
-  }
-  button:disabled {
-    color: var(--ed-muted);
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-  .toolbar .actions button { border: none; border-left: 1px solid var(--ed-line); }
-  .toolbar .actions button:first-child { border-left: none; }
-  .toolbar .actions .present { background: var(--ed-sel); color: var(--ed-sel-fg); }
-  .toolbar .actions .present:hover { opacity: 0.85; }
 
-  .workspace {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    min-height: 0;
-  }
-
-  .sidebar {
+  .settings {
     display: flex;
-    flex-direction: column;
-    border-right: 2px solid var(--ed-line);
-    min-height: 0;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
   }
-  .sidebar .slide-ops {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    border-bottom: 2px solid var(--ed-line);
+  .set-word { color: var(--muted); }
+  .set-word:hover { color: var(--ink); }
+
+  .share { font-size: 13px; color: var(--muted); }
+  .share:hover { color: var(--ink); }
+
+  .present {
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
   }
-  .sidebar .slide-ops button { border: none; border-right: 1px solid var(--ed-line); border-bottom: 1px solid var(--ed-line); }
-  .slide-list {
-    flex: 1;
-    overflow-y: auto;
+  .present:hover { opacity: 0.85; }
+
+  .masthead-status {
+    padding: 8px 32px 0;
+    min-height: 1.3em;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .masthead-status.error { color: #c41e3a; }
+
+  /* Slide stack: vertical numbered list, one slide open at a time. */
+  .slide-stack {
     list-style: none;
+    padding: 20px 32px 0;
+    max-width: 1100px;
   }
   .slide-row {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--ed-line);
-    cursor: pointer;
+    gap: 20px;
+    padding: 14px 0;
+  }
+  .slide-row.drag-over { box-shadow: inset 0 2px 0 0 var(--ink); }
+  .slide-row .num {
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    min-width: 2ch;
+    color: var(--muted);
+    cursor: grab;
     user-select: none;
   }
-  .slide-row:hover { background: #f0f0f0; }
-  .slide-row.selected {
-    background: var(--ed-sel);
-    color: var(--ed-sel-fg);
-  }
-  .slide-row.drag-over { box-shadow: inset 0 3px 0 0 var(--ed-fg); }
-  .slide-row.selected.drag-over { box-shadow: inset 0 3px 0 0 var(--ed-sel-fg); }
-  .slide-row .num {
-    font-size: 12px;
-    font-weight: 600;
-    min-width: 22px;
-    color: var(--ed-muted);
-  }
-  .slide-row.selected .num { color: var(--ed-sel-fg); }
+  .slide-row.selected .num { color: var(--ink); }
   .slide-row .snippet {
-    font-size: 13px;
-    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--slide-gray);
+    cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
   }
-  .slide-row .snippet.empty { color: var(--ed-muted); font-style: italic; }
-  .slide-row.selected .snippet.empty { color: var(--ed-sel-fg); }
+  .slide-row .snippet.empty { font-style: italic; opacity: 0.7; }
 
-  .edit-pane {
-    display: grid;
-    grid-template-rows: 1fr auto;
-    min-height: 0;
+  .slide-editor {
+    flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
   #slide-text {
     width: 100%;
-    height: 100%;
-    resize: none;
+    min-height: 30vh;
+    resize: vertical;
     border: none;
     outline: none;
-    padding: 28px 32px;
+    padding: 0;
+    background: none;
+    color: var(--ink);
     font-family: var(--ed-mono);
-    font-size: 28px;
-    line-height: 1.4;
-    color: var(--ed-fg);
-    background: var(--ed-bg);
+    font-size: 34px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
     tab-size: 4;
   }
-  .align-bar {
+  .controls {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-top: 2px solid var(--ed-line);
+    align-items: baseline;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--muted);
   }
-  .align-bar .label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--ed-muted);
+  .controls .align { display: flex; gap: 12px; }
+  .controls .align button { color: var(--muted); }
+  .controls .align button:hover { color: var(--ink); }
+  .controls .align button.on { color: var(--ink); font-weight: 600; }
+  .controls .delete:hover { color: #c41e3a; }
+
+  .new-slide {
+    display: block;
+    margin: 8px 0 48px 32px;
+    padding-left: var(--indent);
+    font-size: 18px;
+    color: var(--muted);
   }
-  .seg { display: flex; }
-  .seg button { border-right: none; }
-  .seg button:last-child { border-right: 1px solid var(--ed-line); }
-  .seg button.on { background: var(--ed-sel); color: var(--ed-sel-fg); }
-  .align-bar .status {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--ed-muted);
-    min-height: 1em;
-  }
-  .align-bar .status.error { color: #c41e3a; }
+  .new-slide:hover { color: var(--ink); }
 
   @media (max-width: 720px) {
-    .workspace { grid-template-columns: 1fr; grid-template-rows: 160px 1fr; }
-    .sidebar { border-right: none; border-bottom: 2px solid var(--ed-line); }
-    #slide-text { font-size: 20px; padding: 16px; }
-    .toolbar .brand { width: 100%; border-right: none; border-bottom: 1px solid var(--ed-line); }
+    .masthead { padding: 16px 18px 12px; }
+    .masthead .title { font-size: 22px; }
+    .masthead-status { padding: 8px 18px 0; }
+    .slide-stack { padding: 16px 18px 0; }
+    .slide-row .snippet, #slide-text { font-size: 24px; }
+    #slide-text { min-height: 24vh; }
+    .new-slide { margin-left: 18px; font-size: 16px; }
   }
 </style>
 </head>
@@ -368,67 +336,26 @@
 
 <!-- Editor mode -->
 <div id="editor">
-  <div class="toolbar">
-    <div class="brand">big-words</div>
-    <div class="settings">
-      <div class="field">
-        <label for="set-theme">Theme</label>
-        <select id="set-theme">
-          <option value="paper">Paper</option>
-          <option value="ink">Ink</option>
-          <option value="presenter">Presenter</option>
-          <option value="gradient">Gradient</option>
-        </select>
+  <header class="masthead">
+    <h1 class="title">Show Big Words</h1>
+    <div class="masthead-right">
+      <div class="settings" id="settings">
+        <button class="set-word" id="set-theme" data-kind="theme" type="button">paper</button>
+        <span class="dot">·</span>
+        <button class="set-word" id="set-font" data-kind="font" type="button">sans</button>
+        <span class="dot">·</span>
+        <button class="set-word" id="set-transition" data-kind="transition" type="button">no transition</button>
       </div>
-      <div class="field">
-        <label for="set-font">Font</label>
-        <select id="set-font">
-          <option value="sans">Sans</option>
-          <option value="mono">Mono</option>
-          <option value="serif">Serif</option>
-          <option value="pixel">Pixel</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="set-transition">Transition</label>
-        <select id="set-transition">
-          <option value="none">None</option>
-          <option value="wipe">Wipe</option>
-        </select>
-      </div>
+      <button class="share" id="btn-share" type="button">share url</button>
+      <button class="present" id="btn-present" type="button">Present →</button>
     </div>
-    <div class="spacer"></div>
-    <div class="actions">
-      <button id="btn-share" type="button">Share URL</button>
-      <button id="btn-present" class="present" type="button">Present</button>
-    </div>
-  </div>
+  </header>
 
-  <div class="workspace">
-    <div class="sidebar">
-      <div class="slide-ops">
-        <button id="btn-new" type="button">New</button>
-        <button id="btn-dup" type="button">Duplicate</button>
-        <button id="btn-prev" type="button">Move Up</button>
-        <button id="btn-next" type="button">Move Down</button>
-        <button id="btn-del" type="button" style="grid-column: 1 / -1;">Delete</button>
-      </div>
-      <ul id="slide-list" class="slide-list"></ul>
-    </div>
+  <div class="masthead-status" id="status"></div>
 
-    <div class="edit-pane">
-      <textarea id="slide-text" spellcheck="false" placeholder="Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation."></textarea>
-      <div class="align-bar">
-        <span class="label">Align</span>
-        <div class="seg" id="align-seg">
-          <button type="button" data-align="top">Top</button>
-          <button type="button" data-align="center">Center</button>
-          <button type="button" data-align="bottom">Bottom</button>
-        </div>
-        <span id="status" class="status"></span>
-      </div>
-    </div>
-  </div>
+  <ol id="slide-list" class="slide-stack"></ol>
+
+  <button class="new-slide" id="btn-new" type="button">+ New slide</button>
 </div>
 
 <script>
@@ -683,17 +610,6 @@ function newSlide() {
   focusTextarea();
 }
 
-function duplicateSlide() {
-  const src = currentSlide();
-  const id = freshId();
-  const at = currentSlideIndex();
-  deck.slides.splice(at + 1, 0, { id, text: src.text, align: src.align });
-  deck.currentSlideId = id;
-  saveDeck();
-  renderEditor();
-  focusTextarea();
-}
-
 function deleteSlide() {
   if (deck.slides.length <= 1) return;
   const at = currentSlideIndex();
@@ -702,13 +618,6 @@ function deleteSlide() {
   deck.currentSlideId = deck.slides[nextIdx].id;
   saveDeck();
   renderEditor();
-}
-
-function moveSlide(delta) {
-  const at = currentSlideIndex();
-  const to = at + delta;
-  if (to < 0 || to >= deck.slides.length) return;
-  reorderSlide(at, to);
 }
 
 function reorderSlide(from, to) {
@@ -736,15 +645,10 @@ function selectSlide(id) {
 const editorEl = document.getElementById('editor');
 const presentEl = document.getElementById('present');
 const listEl = document.getElementById('slide-list');
-const textArea = document.getElementById('slide-text');
 const statusEl = document.getElementById('status');
-const themeSel = document.getElementById('set-theme');
-const fontSel = document.getElementById('set-font');
-const transitionSel = document.getElementById('set-transition');
-const delBtn = document.getElementById('btn-del');
-const prevBtn = document.getElementById('btn-prev');
-const nextBtn = document.getElementById('btn-next');
-const alignSeg = document.getElementById('align-seg');
+const themeWord = document.getElementById('set-theme');
+const fontWord = document.getElementById('set-font');
+const transitionWord = document.getElementById('set-transition');
 
 let statusTimer = null;
 function setStatus(msg, isError) {
@@ -758,13 +662,96 @@ function snippetFor(text) {
   return (text.split('\n').find(l => l.trim() !== '') || '').trim();
 }
 
-// Fill a slide-row's snippet element from slide text, marking empty slides.
+// Fill a collapsed row's snippet from slide text, marking empty slides.
 function setSnippet(el, text) {
   const snippet = snippetFor(text);
   el.textContent = snippet || 'Empty slide';
   el.classList.toggle('empty', !snippet);
 }
 
+// ---- Settings summary (click to cycle) ----
+
+const SETTING_LISTS = { theme: THEMES, font: FONTS, transition: TRANSITIONS };
+
+// Theme and font display their stored value verbatim; only transition shows a
+// friendlier label. Stored values are unchanged.
+const TRANSITION_LABELS = { none: 'no transition', wipe: 'wipe transition' };
+
+function renderSettings() {
+  themeWord.textContent = deck.settings.theme;
+  fontWord.textContent = deck.settings.font;
+  transitionWord.textContent = TRANSITION_LABELS[deck.settings.transition];
+}
+
+function cycleSetting(kind) {
+  const list = SETTING_LISTS[kind];
+  if (!list) return;
+  const cur = deck.settings[kind];
+  deck.settings[kind] = list[(list.indexOf(cur) + 1) % list.length];
+  saveDeck();
+  renderSettings();
+}
+
+document.getElementById('settings').addEventListener('click', (e) => {
+  const word = e.target.closest('.set-word');
+  if (word) cycleSetting(word.dataset.kind);
+});
+
+// ---- Slide stack ----
+
+// Build the inline editor (textarea + controls) for the open slide.
+function buildSlideEditor(slide) {
+  const wrap = document.createElement('div');
+  wrap.className = 'slide-editor';
+
+  const ta = document.createElement('textarea');
+  ta.id = 'slide-text';
+  ta.spellcheck = false;
+  ta.placeholder = 'Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.';
+  ta.value = slide.text;
+  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); });
+  wrap.appendChild(ta);
+
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+
+  const alignWrap = document.createElement('span');
+  alignWrap.className = 'align';
+  ['top', 'center', 'bottom'].forEach(a => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.align = a;
+    b.textContent = a;
+    if (slide.align === a) b.classList.add('on');
+    b.addEventListener('click', () => {
+      currentSlide().align = a;
+      saveDeck();
+      alignWrap.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.align === a));
+    });
+    alignWrap.appendChild(b);
+  });
+  controls.appendChild(alignWrap);
+
+  // Delete is hidden when only one slide remains. There is no Duplicate.
+  if (deck.slides.length > 1) {
+    const sep = document.createElement('span');
+    sep.className = 'sep';
+    sep.textContent = '·';
+    controls.appendChild(sep);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'delete';
+    del.textContent = 'delete';
+    del.addEventListener('click', deleteSlide);
+    controls.appendChild(del);
+  }
+
+  wrap.appendChild(controls);
+  return wrap;
+}
+
+// Render the full stack: every slide is a numbered row; the selected slide is
+// expanded inline (textarea + controls), all others collapse to a snippet.
 function renderSlideList() {
   listEl.innerHTML = '';
   deck.slides.forEach((slide, i) => {
@@ -772,85 +759,46 @@ function renderSlideList() {
     li.className = 'slide-row' + (slide.id === deck.currentSlideId ? ' selected' : '');
     li.dataset.id = slide.id;
     li.dataset.index = String(i);
-    li.draggable = true;
 
     const num = document.createElement('span');
     num.className = 'num';
     num.textContent = String(i + 1);
-
-    const snip = document.createElement('span');
-    snip.className = 'snippet';
-    setSnippet(snip, slide.text);
-
+    num.draggable = true;   // drag the number to reorder
     li.appendChild(num);
-    li.appendChild(snip);
+
+    if (slide.id === deck.currentSlideId) {
+      li.appendChild(buildSlideEditor(slide));
+    } else {
+      const snip = document.createElement('span');
+      snip.className = 'snippet';
+      setSnippet(snip, slide.text);
+      li.appendChild(snip);
+    }
     listEl.appendChild(li);
   });
 }
 
-function renderAlign() {
-  const align = currentSlide().align;
-  alignSeg.querySelectorAll('button').forEach(b => {
-    b.classList.toggle('on', b.dataset.align === align);
-  });
-}
-
 function renderEditor() {
+  renderSettings();
   renderSlideList();
-  const slide = currentSlide();
-  if (textArea.value !== slide.text) textArea.value = slide.text;
-  renderAlign();
-  themeSel.value = deck.settings.theme;
-  fontSel.value = deck.settings.font;
-  transitionSel.value = deck.settings.transition;
-  delBtn.disabled = deck.slides.length <= 1;
-  const at = currentSlideIndex();
-  prevBtn.disabled = at <= 0;
-  nextBtn.disabled = at >= deck.slides.length - 1;
 }
 
 function focusTextarea() {
-  textArea.focus();
+  const ta = document.getElementById('slide-text');
+  if (ta) ta.focus();
 }
 
-// ---- Editor wiring ----
-
-textArea.addEventListener('input', () => {
-  currentSlide().text = textArea.value;
-  // update snippet + empty state without rebuilding the whole list
-  const snip = listEl.querySelector('.slide-row[data-id="' + deck.currentSlideId + '"] .snippet');
-  if (snip) setSnippet(snip, textArea.value);
-  saveDeck();
-});
-
-alignSeg.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-align]');
-  if (!btn) return;
-  currentSlide().align = btn.dataset.align;
-  saveDeck();
-  renderAlign();
-});
-
-themeSel.addEventListener('change', () => {
-  deck.settings.theme = themeSel.value;
-  saveDeck();
-});
-fontSel.addEventListener('change', () => {
-  deck.settings.font = fontSel.value;
-  saveDeck();
-});
-transitionSel.addEventListener('change', () => {
-  deck.settings.transition = transitionSel.value;
-  saveDeck();
-});
-
 document.getElementById('btn-new').addEventListener('click', newSlide);
-document.getElementById('btn-dup').addEventListener('click', duplicateSlide);
-document.getElementById('btn-del').addEventListener('click', deleteSlide);
-prevBtn.addEventListener('click', () => moveSlide(-1));
-nextBtn.addEventListener('click', () => moveSlide(1));
 
-// ---- Drag and drop reordering ----
+// ---- Open a collapsed slide (the open slide IS the selection) ----
+
+listEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.slide-row');
+  if (!row || row.classList.contains('selected')) return;
+  selectSlide(row.dataset.id);
+});
+
+// ---- Drag the number to reorder ----
 
 let dragFrom = null;
 
@@ -859,8 +807,9 @@ function clearDragOver() {
 }
 
 listEl.addEventListener('dragstart', (e) => {
-  const row = e.target.closest('.slide-row');
-  if (!row) return;
+  const num = e.target.closest('.num');
+  if (!num) return;
+  const row = num.closest('.slide-row');
   dragFrom = Number(row.dataset.index);
   e.dataTransfer.effectAllowed = 'move';
   // Some browsers require data to be set for drag to start.
@@ -886,22 +835,13 @@ listEl.addEventListener('drop', (e) => {
   e.preventDefault();
   const row = e.target.closest('.slide-row');
   clearDragOver();
-  if (row) {
-    const to = Number(row.dataset.index);
-    reorderSlide(dragFrom, to);
-  }
+  if (row) reorderSlide(dragFrom, Number(row.dataset.index));
   dragFrom = null;
 });
 
 listEl.addEventListener('dragend', () => {
   clearDragOver();
   dragFrom = null;
-});
-
-// Click to select (but not when finishing a drag).
-listEl.addEventListener('click', (e) => {
-  const row = e.target.closest('.slide-row');
-  if (row) selectSlide(row.dataset.id);
 });
 
 // =====================================================================
