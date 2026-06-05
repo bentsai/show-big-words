@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>big-words</title>
+        <title>Show Big Words</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <meta
@@ -1132,7 +1132,10 @@
 
             // Light the detected option in an align indicator and dim the rest.
             function lightAlign(wrap, detected) {
-                wrap.setAttribute("aria-label", "Vertical alignment: " + detected);
+                wrap.setAttribute(
+                    "aria-label",
+                    "Vertical alignment: " + detected,
+                );
                 wrap.querySelectorAll("[data-align]").forEach((w) =>
                     w.classList.toggle("on", w.dataset.align === detected),
                 );
