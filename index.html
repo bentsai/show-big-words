@@ -6,7 +6,8 @@
 <title>big-words</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<meta name="description" content="Show Big Words is a static, local-first slide editor that presents your text as large as it will fit on screen. No accounts, no build step; decks save locally and share by URL.">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -143,8 +144,8 @@
   :root {
     --paper: #faf9f6;
     --ink: #1a1a1a;
-    --muted: #999999;
-    --slide-gray: #9a9a93;
+    --muted: #6e6e6e;
+    --slide-gray: #868680;
     --hairline: rgba(26, 26, 26, 0.12);
     --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
     --indent: calc(2ch + 20px);   /* number column + gap, for aligning loose items */
@@ -174,8 +175,9 @@
   }
   .masthead .title {
     font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+    font-style: italic;
     font-weight: 600;
-    font-size: 28px;
+    font-size: 40px;
     letter-spacing: -0.01em;
     line-height: 1;
   }
@@ -194,6 +196,15 @@
     border: none;
     padding: 0;
     cursor: pointer;
+  }
+
+  /* Keyboard focus ring for all editor controls. Mouse clicks stay ring-free
+     thanks to :focus-visible; the textarea opts in explicitly below since its
+     id selector outranks this rule. */
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 
   .settings {
@@ -241,8 +252,10 @@
   .slide-row.drag-over { box-shadow: inset 0 2px 0 0 var(--ink); }
   .slide-row .num {
     font-variant-numeric: tabular-nums;
-    font-size: 14px;
+    font-size: 28px;
+    font-weight: 700;
     min-width: 2ch;
+    text-align: left;
     color: var(--muted);
     cursor: grab;
     user-select: none;
@@ -255,12 +268,14 @@
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -0.02em;
+    text-align: left;
     color: var(--slide-gray);
     cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .slide-row .snippet:hover { color: var(--ink); }
   .slide-row .snippet.empty { font-style: italic; opacity: 0.7; }
 
   .slide-editor {
@@ -275,15 +290,25 @@
     min-height: 30vh;
     resize: vertical;
     border: none;
-    outline: none;
-    padding: 0;
+    /* Padding + matching negative margin: gives the focus background some
+       breathing room while keeping the text flush with the collapsed snippets. */
+    padding: 8px 12px;
+    margin: -8px -12px;
     background: none;
+    border-radius: 4px;
     color: var(--ink);
     font-family: var(--ed-mono);
     font-size: 34px;
     line-height: 1.25;
     letter-spacing: -0.02em;
     tab-size: 4;
+    transition: background-color 120ms ease;
+  }
+  /* Focus is shown as a subtle wash rather than the global outline ring. */
+  #slide-text:focus,
+  #slide-text:focus-visible {
+    outline: none;
+    background: rgba(26, 26, 26, 0.05);
   }
   .controls {
     display: flex;
@@ -296,6 +321,7 @@
   .controls .align button { color: var(--muted); }
   .controls .align button:hover { color: var(--ink); }
   .controls .align button.on { color: var(--ink); font-weight: 600; }
+  .controls .delete { margin-left: auto; }
   .controls .delete:hover { color: #c41e3a; }
 
   .new-slide {
@@ -309,7 +335,7 @@
 
   @media (max-width: 720px) {
     .masthead { padding: 16px 18px 12px; }
-    .masthead .title { font-size: 22px; }
+    .masthead .title { font-size: 30px; }
     .masthead-status { padding: 8px 18px 0; }
     .slide-stack { padding: 16px 18px 0; }
     .slide-row .snippet, #slide-text { font-size: 24px; }
@@ -733,11 +759,9 @@ function buildSlideEditor(slide) {
   controls.appendChild(alignWrap);
 
   // Delete is hidden when only one slide remains. There is no Duplicate.
+  // It sits flush right (via .controls .delete margin-left:auto), so no
+  // separator is needed between it and the align group.
   if (deck.slides.length > 1) {
-    const sep = document.createElement('span');
-    sep.className = 'sep';
-    sep.textContent = '·';
-    controls.appendChild(sep);
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'delete';
@@ -760,18 +784,24 @@ function renderSlideList() {
     li.dataset.id = slide.id;
     li.dataset.index = String(i);
 
-    const num = document.createElement('span');
+    // The number is a drag handle for mouse users and a reorder control for
+    // keyboard users (ArrowUp/ArrowDown move the slide; see onNumKey).
+    const num = document.createElement('button');
+    num.type = 'button';
     num.className = 'num';
     num.textContent = String(i + 1);
     num.draggable = true;   // drag the number to reorder
+    num.setAttribute('aria-label', 'Slide ' + (i + 1) + '. Use arrow up or down to reorder');
     li.appendChild(num);
 
     if (slide.id === deck.currentSlideId) {
       li.appendChild(buildSlideEditor(slide));
     } else {
-      const snip = document.createElement('span');
+      const snip = document.createElement('button');
+      snip.type = 'button';
       snip.className = 'snippet';
       setSnippet(snip, slide.text);
+      snip.setAttribute('aria-label', 'Edit slide ' + (i + 1) + ': ' + (snippetFor(slide.text) || 'empty slide'));
       li.appendChild(snip);
     }
     listEl.appendChild(li);
@@ -842,6 +872,23 @@ listEl.addEventListener('drop', (e) => {
 listEl.addEventListener('dragend', () => {
   clearDragOver();
   dragFrom = null;
+});
+
+// ---- Keyboard reorder: focus a slide number, then ArrowUp/ArrowDown ----
+
+listEl.addEventListener('keydown', (e) => {
+  const num = e.target.closest('.num');
+  if (!num) return;
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  e.preventDefault();
+  const from = Number(num.closest('.slide-row').dataset.index);
+  const to = e.key === 'ArrowUp' ? from - 1 : from + 1;
+  if (to < 0 || to >= deck.slides.length) return;
+  reorderSlide(from, to);
+  // renderSlideList rebuilt the rows; move focus to the moved slide's number
+  // so a sequence of arrow presses keeps walking the same slide.
+  const moved = listEl.querySelector('.slide-row[data-index="' + to + '"] .num');
+  if (moved) moved.focus();
 });
 
 // =====================================================================
