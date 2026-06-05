@@ -191,7 +191,7 @@
                     "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
                 --font-sans:
                     "Rubik", -apple-system, "Helvetica Neue", Arial, sans-serif;
-                --num-col: 3.25rem; /* number column width; content + controls align past it */
+                --num-col: 4.5rem; /* number gutter (grid column 1); wide enough for a 3-digit number at 2rem */
             }
 
             #editor {
@@ -314,10 +314,16 @@
                 box-shadow: inset 0 2px 0 0 var(--ink);
             }
 
-            /* Header line: the number reads as a heading; controls sit beside it (open
-     slide only); a hairline separates the header from the content below. */
+            /* Header and body share one grid: column 1 is the number gutter,
+     column 2 holds the controls (header) and the content (body). Aligning both
+     rows to the same track means controls and content always share a left edge,
+     whatever the number's width. */
+            .slide-head,
+            .slide-body {
+                display: grid;
+                grid-template-columns: var(--num-col) 1fr;
+            }
             .slide-head {
-                display: flex;
                 align-items: center;
                 padding-bottom: 8px;
                 border-bottom: 1px solid var(--hairline);
@@ -328,7 +334,6 @@
                 font-size: 2rem;
                 font-weight: 600;
                 line-height: 1;
-                min-width: var(--num-col);
                 text-align: left;
                 letter-spacing: -0.02em;
                 color: var(--muted);
@@ -339,11 +344,15 @@
                 color: var(--ink);
             }
 
-            /* Content sits below the hairline, indented to clear the number column so it
-     lines up with the controls' "top" label above it. */
+            /* Content sits below the hairline in column 2, lining up with the
+     controls above it. */
             .slide-body {
                 padding-top: 12px;
-                padding-left: var(--num-col);
+            }
+            /* Body content occupies only the content column (column 2). */
+            .slide-body .snippet,
+            .slide-body #slide-text {
+                grid-column: 2;
             }
             .slide-body .snippet {
                 display: block;
@@ -399,9 +408,8 @@
                 outline: none;
                 background: rgba(26, 26, 26, 0.05);
             }
-            /* Controls live in the header beside the number; delete is pushed flush right. */
+            /* Controls fill the content column beside the number; delete is pushed flush right. */
             .controls {
-                flex: 1;
                 display: flex;
                 align-items: center;
                 gap: 14px;
