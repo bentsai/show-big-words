@@ -47,19 +47,19 @@ function readDeck(page) {
   }, STORAGE_KEY);
 }
 
-// Reorder by dragging a slide number. Native draggable DnD is not reliably
+// Reorder by dragging a slide's move handle. Native draggable DnD is not reliably
 // driven by Playwright's mouse-based dragTo, so we dispatch the exact HTML5
-// drag events the app listens for: dragstart on the .num, drop on the target row.
+// drag events the app listens for: dragstart on the .move, drop on the target row.
 async function dragNumber(page, fromIndex, toIndex) {
   await page.evaluate(({ fromIndex, toIndex }) => {
     const rows = document.querySelectorAll('.slide-row');
-    const num = rows[fromIndex].querySelector('.num');
+    const move = rows[fromIndex].querySelector('.move');
     const target = rows[toIndex];
     const dt = new DataTransfer();
-    num.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    move.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
     target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
     target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
-    num.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+    move.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
   }, { fromIndex, toIndex });
 }
 
@@ -124,13 +124,13 @@ test.describe('data model', () => {
     expect(deck.slides.some(s => s.id === deck.currentSlideId)).toBe(true);
   });
 
-  test('drag-number reorder keeps selection on the moved slide', async ({ page }) => {
+  test('drag-move reorder keeps selection on the moved slide', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#slide-text').fill('One');
     await page.locator('#btn-new').click();
     await page.locator('#slide-text').fill('Two');
 
-    // Slide 2 ("Two") is selected; drag its number above slide 1.
+    // Slide 2 ("Two") is selected; drag its move handle above slide 1.
     await dragNumber(page, 1, 0);
 
     const deck = await readDeck(page);
@@ -164,16 +164,44 @@ test.describe('data model', () => {
     await expect(page.locator('#set-theme')).toHaveText('ink');
   });
 
-  test('per-slide align is stored and restored', async ({ page }) => {
+  test('alignment indicator is stacked beside the editor and restored from text', async ({ page }) => {
     await freshLoad(page);
-    await page.locator('button[data-align="top"]').click();
-    await expect(page.locator('button[data-align="top"]')).toHaveClass(/on/);
+    await page.locator('#btn-new').click();
+    await expect(page.locator('.delete')).toBeVisible();
+
+    const align = page.locator('.slide-row.selected .align');
+    await expect(align).toHaveText('↥‐↧');
+    await expect(align).toHaveAttribute('aria-label', 'Vertical alignment: center');
+
+    const layout = await page.evaluate(() => {
+      const indicator = document.querySelector('.slide-row.selected .align');
+      const symbols = Array.from(indicator.querySelectorAll('[data-align]'));
+      const textarea = document.getElementById('slide-text');
+      const del = document.querySelector('.slide-row.selected .delete');
+      const ir = indicator.getBoundingClientRect();
+      const tr = textarea.getBoundingClientRect();
+      const dr = del.getBoundingClientRect();
+      return {
+        stacked: symbols.every((symbol, i) =>
+          i === 0 || symbol.getBoundingClientRect().top > symbols[i - 1].getBoundingClientRect().top
+        ),
+        besideEditor: ir.left > tr.right,
+        alignedWithDelete: Math.abs(ir.right - dr.right) <= 1
+      };
+    });
+    expect(layout).toEqual({ stacked: true, besideEditor: true, alignedWithDelete: true });
+
+    await page.locator('#slide-text').fill('Top aligned\n');
+    await expect(align).toHaveAttribute('aria-label', 'Vertical alignment: top');
+    await expect(page.locator('.slide-row.selected .align [data-align="top"]')).toHaveClass(/on/);
+
     let deck = await readDeck(page);
-    expect(deck.slides[0].align).toBe('top');
+    expect(deck.slides[1].text).toBe('Top aligned\n');
 
     await page.reload();
     await page.waitForSelector('.slide-row.selected');
-    await expect(page.locator('button[data-align="top"]')).toHaveClass(/on/);
+    await page.locator('.slide-row').nth(1).click();
+    await expect(page.locator('.slide-row.selected .align')).toHaveAttribute('aria-label', 'Vertical alignment: top');
   });
 });
 
@@ -536,9 +564,9 @@ test.describe('presentation', () => {
 
   test('per-slide align maps to flex alignment', async ({ page }) => {
     await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
-      { id: 'slide-1', text: 'Top', align: 'top' },
+      { id: 'slide-1', text: 'Top\n', align: 'center' },
       { id: 'slide-2', text: 'Center', align: 'center' },
-      { id: 'slide-3', text: 'Bottom', align: 'bottom' }
+      { id: 'slide-3', text: '\nBottom', align: 'center' }
     ], currentSlideId: 'slide-1', nextId: 4 });
     await present(page);
     const align = () => page.evaluate(() => getComputedStyle(document.getElementById('slide')).alignItems);
