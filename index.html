@@ -1495,24 +1495,33 @@
                 return base64urlEncode(JSON.stringify(payload));
             }
 
+            const shareBtn = document.getElementById("btn-share");
+            let shareLabelTimer = null;
+            // Briefly swap the share button's own label to give feedback, then
+            // restore "share url".
+            function flashShareLabel(msg) {
+                shareBtn.textContent = msg;
+                if (shareLabelTimer) clearTimeout(shareLabelTimer);
+                shareLabelTimer = setTimeout(() => {
+                    shareBtn.textContent = "share url";
+                }, 1200);
+            }
+
             function shareUrl() {
                 const encoded = encodeDeck(deck);
                 const base = location.href.split("#")[0];
                 const url = base + "#deck=" + encoded;
-                history.replaceState(null, "", url);
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(url).then(
-                        () => setStatus("Share URL copied to clipboard"),
-                        () => setStatus("Share URL ready in address bar"),
+                        () => flashShareLabel("copied!"),
+                        () => flashShareLabel("copy failed"),
                     );
                 } else {
-                    setStatus("Share URL ready in address bar");
+                    flashShareLabel("copy failed");
                 }
             }
 
-            document
-                .getElementById("btn-share")
-                .addEventListener("click", shareUrl);
+            shareBtn.addEventListener("click", shareUrl);
 
             // Returns a decoded deck object from the current #deck= hash, or null.
             function deckFromHash() {

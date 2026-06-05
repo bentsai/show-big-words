@@ -281,6 +281,10 @@ test.describe('url sharing', () => {
     await page.locator('#set-theme').click(); // paper -> ink
     await page.locator('#btn-share').click();
 
+    // The button itself flashes confirmation, then restores its label.
+    await expect(page.locator('#btn-share')).toHaveText('copied!');
+    await expect(page.locator('#btn-share')).toHaveText('share url');
+
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     expect(clip).toContain('#deck=');
 
