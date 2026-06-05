@@ -1,1144 +1,1451 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>big-words</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<meta name="description" content="Show Big Words is a static, local-first slide editor that presents your text as large as it will fit on screen. No accounts, no build step; decks save locally and share by URL.">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Rubik:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>big-words</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <meta
+            name="description"
+            content="Show Big Words is a static, local-first slide editor that presents your text as large as it will fit on screen. No accounts, no build step; decks save locally and share by URL."
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;600&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,600&family=IBM+Plex+Mono:wght@200;400;600&family=IBM+Plex+Sans:wght@200;600&family=DM+Serif+Display:ital@0;1&family=Rubik:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            *,
+            *::before,
+            *::after {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
 
-  /* ---- Slide rendering (themes, fonts, layers) ---- */
+            /* ---- Slide rendering (themes, fonts, layers) ---- */
 
-  :root {
-    --bg: #ffffff;
-    --fg: #1a1a1a;
-    --font: 'IBM Plex Sans', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  }
-  :root.ink {
-    --bg: #111111;
-    --fg: #f0f0f0;
-  }
-  :root.blue {
-    --bg: #0aa0f5;
-    --fg: #ffffff;
-  }
-  :root.purple {
-    --bg: #7f0af5;
-    --fg: #ffffff;
-  }
-  :root.pink {
-    --bg: #f50ad6;
-    --fg: #ffffff;
-  }
-  :root.red {
-    --bg: #f73b6a;
-    --fg: #ffffff;
-  }
-  :root.orange {
-    --bg: #f5a40a;
-    --fg: #ffffff;
-  }
-  :root.gradient {
-    --fg: #ffffff;
-  }
-  :root.gradient body {
-    background: transparent;
-  }
-  @keyframes gradient {
-    0% { background-position-x: 0; }
-    100% { background-position-x: 10000px; }
-  }
-  :root.font-mono {
-    --font: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
-  }
-  :root.font-serif {
-    --font: 'DM Serif Display', Georgia, 'Times New Roman', serif;
-  }
-  :root.font-pixel {
-    --font: 'Silkscreen', cursive;
-  }
+            :root {
+                --bg: #ffffff;
+                --fg: #1a1a1a;
+                --font:
+                    "IBM Plex Sans", -apple-system, "Helvetica Neue", Arial,
+                    sans-serif;
+            }
+            :root.ink {
+                --bg: #111111;
+                --fg: #f0f0f0;
+            }
+            :root.blue {
+                --bg: #0aa0f5;
+                --fg: #ffffff;
+            }
+            :root.purple {
+                --bg: #7f0af5;
+                --fg: #ffffff;
+            }
+            :root.pink {
+                --bg: #f50ad6;
+                --fg: #ffffff;
+            }
+            :root.red {
+                --bg: #f73b6a;
+                --fg: #ffffff;
+            }
+            :root.orange {
+                --bg: #f5a40a;
+                --fg: #ffffff;
+            }
+            :root.gradient {
+                --fg: #ffffff;
+            }
+            :root.gradient body {
+                background: transparent;
+            }
+            @keyframes gradient {
+                0% {
+                    background-position-x: 0;
+                }
+                100% {
+                    background-position-x: 10000px;
+                }
+            }
+            :root.font-mono {
+                --font: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+            }
+            :root.font-serif {
+                --font: "DM Serif Display", Georgia, "Times New Roman", serif;
+            }
+            :root.font-pixel {
+                --font: "Silkscreen", cursive;
+            }
 
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    /* Present mode reads var(--bg) for the backdrop behind the layers.
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                /* Present mode reads var(--bg) for the backdrop behind the layers.
        In editor mode #editor covers the body, so this is harmless there. */
-    background: var(--bg);
-  }
+                background: var(--bg);
+            }
 
-  /* The slide font/theme variables only style present-mode layers, not the
+            /* The slide font/theme variables only style present-mode layers, not the
      editor chrome, so the editor keeps its own fixed manuscript styling. */
-  .layer {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: var(--font);
-    clip-path: inset(0 100% 0 0);
-  }
-  .layer.active {
-    clip-path: none;
-  }
-  :root.gradient .layer {
-    background: transparent;
-  }
-  :root.gradient .layer::before {
-    content: '';
-    position: fixed;
-    inset: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(to right, #0aa0f5 0%, #2ce0bf 19%, #76dd2c 40%, #f5a40a 60%, #f50ad6 83%, #0aa0f5 100%);
-    background-size: 10000px 100%;
-    animation: gradient 240s linear infinite;
-    transform: rotate(-16deg);
-    z-index: -1;
-  }
+            .layer {
+                position: fixed;
+                inset: 0;
+                background: var(--bg);
+                color: var(--fg);
+                font-family: var(--font);
+                clip-path: inset(0 100% 0 0);
+            }
+            .layer.active {
+                clip-path: none;
+            }
+            :root.gradient .layer {
+                background: transparent;
+            }
+            :root.gradient .layer::before {
+                content: "";
+                position: fixed;
+                inset: -50%;
+                width: 200%;
+                height: 200%;
+                background: linear-gradient(
+                    to right,
+                    #0aa0f5 0%,
+                    #2ce0bf 19%,
+                    #76dd2c 40%,
+                    #f5a40a 60%,
+                    #f50ad6 83%,
+                    #0aa0f5 100%
+                );
+                background-size: 10000px 100%;
+                animation: gradient 240s linear infinite;
+                transform: rotate(-16deg);
+                z-index: -1;
+            }
 
-  .slide {
-    position: absolute;
-    top: 3%;
-    left: 4%;
-    width: 92%;
-    height: 94%;
-    display: flex;
-    align-items: center;
-  }
-  .slide.align-top { align-items: flex-start; }
-  .slide.align-bottom { align-items: flex-end; }
+            .slide {
+                position: absolute;
+                top: 3%;
+                left: 4%;
+                width: 92%;
+                height: 94%;
+                display: flex;
+                align-items: center;
+            }
+            .slide.align-top {
+                align-items: flex-start;
+            }
+            .slide.align-bottom {
+                align-items: flex-end;
+            }
 
-  .text {
-    width: 100%;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    font-weight: 600;
-  }
+            .text {
+                width: 100%;
+                white-space: pre-wrap;
+                overflow-wrap: break-word;
+                line-height: 1.05;
+                letter-spacing: -0.02em;
+                font-weight: 600;
+            }
 
-  .center { text-align: center; }
+            .center {
+                text-align: center;
+            }
 
-  .subtext {
-    font-weight: 200;
-  }
-  :root.font-serif .subtext {
-    font-family: 'DM Sans', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  }
-  :root.font-pixel .text {
-    font-weight: 400;
-  }
+            .subtext {
+                font-weight: 200;
+            }
+            :root.font-serif .subtext {
+                font-family:
+                    "DM Sans",
+                    -apple-system,
+                    "Helvetica Neue",
+                    Arial,
+                    sans-serif;
+            }
+            :root.font-pixel .text {
+                font-weight: 400;
+            }
 
-  .blank { line-height: 0.25; }
+            .blank {
+                line-height: 0.25;
+            }
 
-  .annotation {
-    opacity: 0.65;
-  }
+            .annotation {
+                opacity: 0.65;
+            }
 
-  /* ---- Editor chrome (manuscript, type-driven) ---- */
+            /* ---- Editor chrome (manuscript, type-driven) ---- */
 
-  :root {
-    --paper: #faf9f6;
-    --ink: #1a1a1a;
-    --muted: #6e6e6e;
-    --slide-gray: #868680;
-    --hairline: rgba(26, 26, 26, 0.12);
-    --ed-mono: 'IBM Plex Mono', 'SF Mono', Menlo, Consolas, monospace;
-    --ui-sans: 'Rubik', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-    --num-col: 2.5rem;   /* number column width; content + controls align past it */
-  }
+            :root {
+                --paper: #faf9f6;
+                --ink: #1a1a1a;
+                --muted: #6e6e6e;
+                --slide-gray: #868680;
+                --hairline: rgba(26, 26, 26, 0.12);
+                --font-mono:
+                    "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+                --font-sans:
+                    "Rubik", -apple-system, "Helvetica Neue", Arial, sans-serif;
+                --num-col: 3.25rem; /* number column width; content + controls align past it */
+            }
 
-  #editor {
-    position: fixed;
-    inset: 0;
-    overflow-y: auto;
-    background: var(--paper);
-    color: var(--ink);
-    /* Editor chrome (copy, buttons, numbers, controls) is Rubik; slide content
+            #editor {
+                position: fixed;
+                inset: 0;
+                overflow-y: auto;
+                background: var(--paper);
+                color: var(--ink);
+                /* Editor chrome (copy, buttons, numbers, controls) is Rubik; slide content
        (the textarea and collapsed snippets) opts back into IBM Plex Mono. */
-    font-family: var(--ui-sans);
-    -webkit-font-smoothing: antialiased;
-  }
-  #editor.hidden { display: none; }
-  #present.hidden { display: none; }
+                font-family: var(--font-sans);
+                -webkit-font-smoothing: antialiased;
+            }
+            #editor.hidden {
+                display: none;
+            }
+            #present.hidden {
+                display: none;
+            }
 
-  /* Masthead: title + settings summary + share + Present. One hairline below. */
-  .masthead {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 24px 32px;
-    flex-wrap: wrap;
-    padding: 24px 32px 18px;
-    border-bottom: 1px solid var(--hairline);
-  }
-  .masthead .title {
-    font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
-    font-style: italic;
-    font-weight: 600;
-    font-size: 2.5rem;
-    letter-spacing: -0.1rem;
-    line-height: 1;
-    color: var(--muted);
-  }
-  .masthead-right {
-    display: flex;
-    align-items: baseline;
-    gap: 18px;
-    flex-wrap: wrap;
-  }
+            /* Masthead: title + settings summary + share + Present. One hairline below. */
+            .masthead {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 24px 32px;
+                flex-wrap: wrap;
+                padding: 24px 32px 18px;
+                border-bottom: 1px solid var(--hairline);
+            }
+            .masthead .title {
+                font-family: "Fraunces", Georgia, "Times New Roman", serif;
+                font-style: italic;
+                font-weight: 600;
+                font-size: 2.5rem;
+                letter-spacing: -0.1rem;
+                line-height: 1;
+                color: var(--muted);
+            }
+            .masthead-right {
+                display: flex;
+                align-items: baseline;
+                gap: 18px;
+                flex-wrap: wrap;
+            }
 
-  /* Flat, borderless buttons everywhere except the filled Present button. */
-  button {
-    font: inherit;
-    color: inherit;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-  }
+            /* Flat, borderless buttons everywhere except the filled Present button. */
+            button {
+                font: inherit;
+                color: inherit;
+                background: none;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+            }
 
-  /* Keyboard focus ring for all editor controls. Mouse clicks stay ring-free
+            /* Keyboard focus ring for all editor controls. Mouse clicks stay ring-free
      thanks to :focus-visible; the textarea opts in explicitly below since its
      id selector outranks this rule. */
-  :focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 3px;
-    border-radius: 2px;
-  }
+            :focus-visible {
+                outline: 2px solid var(--ink);
+                outline-offset: 3px;
+                border-radius: 2px;
+            }
 
-  .settings {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    font-size: 0.8125rem;
-    color: var(--muted);
-  }
-  .set-word { color: var(--muted); }
-  .set-word:hover { color: var(--ink); }
+            .settings {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+                font-size: 0.8125rem;
+                color: var(--muted);
+            }
+            .set-word {
+                color: var(--muted);
+            }
+            .set-word:hover {
+                color: var(--ink);
+            }
 
-  .share { font-size: 0.8125rem; color: var(--muted); }
-  .share:hover { color: var(--ink); }
+            .share {
+                font-size: 0.8125rem;
+                color: var(--muted);
+            }
+            .share:hover {
+                color: var(--ink);
+            }
 
-  .present {
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    padding: 8px 16px;
-  }
-  .present:hover { opacity: 0.85; }
+            .present {
+                background: var(--ink);
+                color: var(--paper);
+                font-size: 0.8125rem;
+                font-weight: 600;
+                padding: 8px 16px;
+            }
+            .present:hover {
+                opacity: 0.85;
+            }
 
-  .masthead-status {
-    padding: 8px 32px 0;
-    min-height: 1.3em;
-    font-size: 0.75rem;
-    color: var(--muted);
-  }
-  .masthead-status.error { color: #c41e3a; }
+            .masthead-status {
+                padding: 8px 32px 0;
+                min-height: 1.3em;
+                font-size: 0.75rem;
+                color: var(--muted);
+            }
+            .masthead-status.error {
+                color: #c41e3a;
+            }
 
-  /* Slide stack: vertical numbered list, one slide open at a time. Each row is
+            /* Slide stack: vertical numbered list, one slide open at a time. Each row is
      a header (number + controls) over a hairline, with the content below it. */
-  .slide-stack {
-    list-style: none;
-    padding: 20px 32px 0;
-    max-width: 1100px;
-  }
-  .slide-row {
-    padding: 18px 0;
-  }
-  .slide-row.drag-over { box-shadow: inset 0 2px 0 0 var(--ink); }
+            .slide-stack {
+                list-style: none;
+                padding: 20px 32px 0;
+                max-width: 1100px;
+            }
+            .slide-row {
+                padding: 18px 0;
+            }
+            .slide-row.drag-over {
+                box-shadow: inset 0 2px 0 0 var(--ink);
+            }
 
-  /* Header line: the number reads as a heading; controls sit beside it (open
+            /* Header line: the number reads as a heading; controls sit beside it (open
      slide only); a hairline separates the header from the content below. */
-  .slide-head {
-    display: flex;
-    align-items: center;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--hairline);
-  }
-  .slide-head .num {
-    font-family: var(--ed-mono);
-    font-variant-numeric: tabular-nums;
-    font-size: 1.125rem;
-    font-weight: 600;
-    line-height: 1;
-    min-width: var(--num-col);
-    text-align: left;
-    letter-spacing: -0.02em;
-    color: var(--muted);
-    cursor: grab;
-    user-select: none;
-  }
-  .slide-row.selected .slide-head .num { color: var(--ink); }
+            .slide-head {
+                display: flex;
+                align-items: center;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--hairline);
+            }
+            .slide-head .num {
+                font-family: var(--font-sans);
+                font-variant-numeric: tabular-nums;
+                font-size: 2rem;
+                font-weight: 600;
+                line-height: 1;
+                min-width: var(--num-col);
+                text-align: left;
+                letter-spacing: -0.02em;
+                color: var(--muted);
+                cursor: grab;
+                user-select: none;
+            }
+            .slide-row.selected .slide-head .num {
+                color: var(--ink);
+            }
 
-  /* Content sits below the hairline, indented to clear the number column so it
+            /* Content sits below the hairline, indented to clear the number column so it
      lines up with the controls' "top" label above it. */
-  .slide-body {
-    padding-top: 12px;
-    padding-left: var(--num-col);
-  }
-  .slide-body .snippet {
-    display: block;
-    width: 100%;
-    /* Inactive slides show their full text in the slide's mono face, so the
+            .slide-body {
+                padding-top: 12px;
+                padding-left: var(--num-col);
+            }
+            .slide-body .snippet {
+                display: block;
+                width: 100%;
+                /* Inactive slides show their full text in the slide's mono face, so the
        whole deck reads at a glance; clicking one opens it for editing. */
-    font-family: var(--ed-mono);
-    font-size: 2.125rem;
-    font-weight: 400;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    text-align: left;
-    color: var(--slide-gray);
-    cursor: pointer;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-  }
-  .slide-body .snippet:hover { color: var(--ink); }
-  .slide-body .snippet.empty { font-style: italic; opacity: 0.7; }
+                font-family: var(--font-mono);
+                font-size: 2.125rem;
+                font-weight: 400;
+                line-height: 1.25;
+                letter-spacing: -0.02em;
+                text-align: left;
+                color: var(--slide-gray);
+                cursor: pointer;
+                white-space: pre-wrap;
+                overflow-wrap: break-word;
+            }
+            .slide-body .snippet:hover {
+                color: var(--ink);
+            }
+            .slide-body .snippet.empty {
+                font-style: italic;
+                opacity: 0.7;
+            }
 
-  #slide-text {
-    width: 100%;
-    /* Height is set to fit content by autosizeTextarea() in JS, so opening a slide for
+            #slide-text {
+                width: 100%;
+                /* Cap at a comfortable reading measure; full text wraps within it. */
+                max-width: 80ch;
+                /* Height is set to fit content by autosizeTextarea() in JS, so opening a slide for
        editing matches the height of its full-text view — no expand/collapse. */
-    height: auto;
-    overflow: hidden;
-    resize: none;
-    border: none;
-    /* Padding + matching negative margin: gives the focus background some
+                height: auto;
+                overflow: hidden;
+                resize: none;
+                border: none;
+                /* Padding + matching negative margin: gives the focus background some
        breathing room while keeping the text flush with the inactive slides. */
-    padding: 8px 12px;
-    margin: -8px -12px;
-    background: none;
-    border-radius: 4px;
-    color: var(--ink);
-    font-family: var(--ed-mono);
-    font-size: 2.125rem;
-    line-height: 1.25;
-    letter-spacing: -0.02em;
-    tab-size: 4;
-    transition: background-color 120ms ease;
-  }
-  /* Focus is shown as a subtle wash rather than the global outline ring. */
-  #slide-text:focus,
-  #slide-text:focus-visible {
-    outline: none;
-    background: rgba(26, 26, 26, 0.05);
-  }
-  /* Controls live in the header beside the number; delete is pushed flush right. */
-  .controls {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 0.8125rem;
-    color: var(--muted);
-  }
-  /* Negative margin cancels the first button's padding so "top" aligns flush
+                padding: 8px 12px;
+                margin: -8px -12px;
+                background: none;
+                border-radius: 4px;
+                color: var(--ink);
+                font-family: var(--font-mono);
+                font-size: 1.5rem;
+                line-height: 1.25;
+                letter-spacing: -0.02em;
+                tab-size: 4;
+                transition: background-color 120ms ease;
+            }
+            /* Focus is shown as a subtle wash rather than the global outline ring. */
+            #slide-text:focus,
+            #slide-text:focus-visible {
+                outline: none;
+                background: rgba(26, 26, 26, 0.05);
+            }
+            /* Controls live in the header beside the number; delete is pushed flush right. */
+            .controls {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                font-size: 0.8125rem;
+                color: var(--muted);
+            }
+            /* Negative margin cancels the first button's padding so "top" aligns flush
      with the content column below the hairline. */
-  .controls .align { display: flex; gap: 8px; margin-left: -6px; }
-  /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
-  .controls .align button,
-  .controls .delete {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 6px;
-  }
-  .controls .align button { color: var(--muted); }
-  .controls .align button:hover { color: var(--ink); }
-  .controls .align button.on { color: var(--ink); font-weight: 600; }
-  .controls .delete { margin-left: auto; margin-right: -6px; }
-  .controls .delete:hover { color: #c41e3a; }
-
-  .new-slide {
-    display: block;
-    margin: 8px 0 48px 32px;
-    padding-left: var(--num-col);
-    font-size: 1.125rem;
-    color: var(--muted);
-  }
-  .new-slide:hover { color: var(--ink); }
-
-  @media (max-width: 720px) {
-    .masthead { padding: 16px 18px 12px; }
-    .masthead .title { font-size: 1.875rem; }
-    .masthead-status { padding: 8px 18px 0; }
-    .slide-stack { padding: 16px 18px 0; }
-    .slide-body .snippet, #slide-text { font-size: 1.5rem; }
-    .new-slide { margin-left: 18px; font-size: 1rem; }
-  }
-</style>
-</head>
-<body>
-
-<!-- Present mode: two stacked layers for wipe transitions. Hidden until Present. -->
-<div id="present" class="hidden">
-  <div id="layer-a" class="layer active">
-    <div id="slide" class="slide">
-      <div id="text" class="text"></div>
-    </div>
-  </div>
-  <div id="layer-b" class="layer">
-    <div class="slide">
-      <div class="text"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Editor mode -->
-<div id="editor">
-  <header class="masthead">
-    <h1 class="title">Show Big Words</h1>
-    <div class="masthead-right">
-      <div class="settings" id="settings">
-        <button class="set-word" id="set-theme" data-kind="theme" type="button">paper</button>
-        <span class="dot">·</span>
-        <button class="set-word" id="set-font" data-kind="font" type="button">sans</button>
-        <span class="dot">·</span>
-        <button class="set-word" id="set-transition" data-kind="transition" type="button">no transition</button>
-      </div>
-      <button class="share" id="btn-share" type="button">share url</button>
-      <button class="present" id="btn-present" type="button">Present →</button>
-    </div>
-  </header>
-
-  <div class="masthead-status" id="status"></div>
-
-  <ol id="slide-list" class="slide-stack"></ol>
-
-  <button class="new-slide" id="btn-new" type="button">+ New slide</button>
-</div>
-
-<script>
-// =====================================================================
-// Slide rendering core (ported from big-text/lib/client.html)
-// =====================================================================
-
-// Minor-third type scale (1.2x ratio): round(1600 / 1.2^i) for i = 0..19
-const SCALE = [1334,1112,926,772,643,536,446,372,310,258,215,179,149,124,104,86,72,60,50,42];
-const layerA = { layer: document.getElementById('layer-a'), slide: document.getElementById('slide'), text: document.getElementById('text') };
-const layerB = { layer: document.getElementById('layer-b'), slide: document.querySelector('#layer-b .slide'), text: document.querySelector('#layer-b .text') };
-let activeLayer = layerA;
-
-const FONTS = ['sans', 'mono', 'serif', 'pixel'];
-const THEMES = ['paper', 'ink', 'presenter', 'gradient'];
-const TRANSITIONS = ['none', 'wipe'];
-const PRESENTER_COLORS = ['blue', 'purple', 'pink', 'red', 'orange', 'ink', 'paper'];
-
-// Next value after `cur` in `list`, wrapping back to the start.
-function nextInCycle(list, cur) {
-  return list[(list.indexOf(cur) + 1) % list.length];
-}
-
-// Ephemeral present-mode state. These never write back to the deck.
-let presentSlides = [];
-let currentIndex = 0;
-let currentFont = 'sans';
-let currentTheme = 'paper';
-let currentTransition = 'none';
-
-function applyFont(font) {
-  currentFont = font;
-  const root = document.documentElement;
-  // Each non-default font maps to a `font-<value>` class; 'sans' is the
-  // default and carries no class.
-  root.classList.remove('font-mono', 'font-serif', 'font-pixel');
-  if (font !== 'sans') root.classList.add('font-' + font);
-}
-
-function applyTheme(theme) {
-  currentTheme = theme;
-  updateThemeDisplay();
-}
-
-function updateThemeDisplay() {
-  const root = document.documentElement;
-  ['ink', 'blue', 'purple', 'pink', 'red', 'orange', 'gradient'].forEach(t => root.classList.remove(t));
-  if (currentTheme === 'presenter') {
-    const color = PRESENTER_COLORS[currentIndex % PRESENTER_COLORS.length];
-    if (color !== 'paper') root.classList.add(color);
-  } else if (currentTheme === 'gradient') {
-    root.classList.add('gradient');
-  } else if (currentTheme === 'ink') {
-    root.classList.add('ink');
-  }
-}
-
-function fitText(layer) {
-  const slideEl = layer.slide;
-  const textEl = layer.text;
-  const maxH = slideEl.clientHeight;
-  const maxW = slideEl.clientWidth;
-  const annotations = textEl.querySelectorAll('.annotation');
-  const subtextEl = textEl.querySelector('.subtext');
-  for (let i = 0; i < SCALE.length; i++) {
-    textEl.style.fontSize = SCALE[i] + 'px';
-    if (subtextEl) subtextEl.style.fontSize = Math.round(SCALE[i] / 2) + 'px';
-    const annSize = Math.min(i + 4, SCALE.length - 1);
-    annotations.forEach(a => a.style.fontSize = SCALE[annSize] + 'px');
-    if (textEl.scrollHeight > maxH) continue;
-    textEl.style.overflowWrap = 'normal';
-    const overflows = textEl.scrollWidth > maxW;
-    textEl.style.overflowWrap = '';
-    if (overflows) continue;
-    return;
-  }
-}
-
-function populateLayer(layer) {
-  const textEl = layer.text;
-  const slideEl = layer.slide;
-  slideEl.classList.remove('align-top', 'align-bottom');
-  if (presentSlides.length === 0) { textEl.textContent = ''; return; }
-  const slide = presentSlides[currentIndex];
-  if (slide.align === 'top') slideEl.classList.add('align-top');
-  else if (slide.align === 'bottom') slideEl.classList.add('align-bottom');
-  const escaped = slide.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const lines = escaped.split('\n');
-  const blankIdx = lines.findIndex(l => l.trim() === '');
-  const mainLines = blankIdx >= 0 ? lines.slice(0, blankIdx) : lines;
-  const subLines = blankIdx >= 0 ? lines.slice(blankIdx + 1) : [];
-
-  function renderLine(line) {
-    if (line.trim() === '') return '<div class="blank">&nbsp;</div>';
-    const annotated = line.replace(/\(\((.+?)\)\)/g, '<span class="annotation">$1</span>');
-    if (annotated.startsWith('\t')) return '<div class="center">' + annotated.replace(/^\t+/, '') + '</div>';
-    return '<div>' + annotated + '</div>';
-  }
-
-  let html = mainLines.map(renderLine).join('');
-  if (subLines.length) html += '<div class="blank">&nbsp;</div><div class="subtext">' + subLines.map(renderLine).join('') + '</div>';
-  textEl.innerHTML = html;
-}
-
-let wipeAnimation = null;
-const WIPE_DURATION = 1200;
-
-function commitWipe() {
-  if (!wipeAnimation) return;
-  const { incoming, outgoing, anim } = wipeAnimation;
-  wipeAnimation = null;
-  incoming.layer.classList.add('active');
-  anim.cancel();
-  outgoing.layer.classList.remove('active');
-  incoming.layer.style.zIndex = '';
-  outgoing.layer.style.zIndex = '';
-  outgoing.layer.style.background = '';
-  outgoing.layer.style.color = '';
-  outgoing.text.textContent = '';
-  activeLayer = incoming;
-}
-
-function renderSlide(direction) {
-  if (currentIndex >= presentSlides.length) currentIndex = presentSlides.length - 1;
-  if (currentIndex < 0) currentIndex = 0;
-
-  if (currentTransition === 'wipe' && direction) {
-    if (wipeAnimation) { commitWipe(); }
-    const incoming = activeLayer === layerA ? layerB : layerA;
-    const outgoing = activeLayer;
-
-    // Freeze outgoing appearance before theme changes
-    if (currentTheme !== 'gradient') {
-      const cs = getComputedStyle(outgoing.layer);
-      outgoing.layer.style.background = cs.backgroundColor;
-      outgoing.layer.style.color = cs.color;
-    }
-
-    updateThemeDisplay();
-
-    populateLayer(incoming);
-    fitText(incoming);
-
-    // Stack incoming on top, both visible during animation
-    incoming.layer.style.zIndex = 2;
-    outgoing.layer.style.zIndex = 1;
-    outgoing.layer.classList.add('active');
-
-    // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
-    const clipFrom = direction === 'forward'
-      ? 'polygon(calc(100% + 14vh) 0, 200% 0, 200% 100%, 100% 100%)'
-      : 'polygon(0 0, -100% 0, -100% 100%, calc(0% - 14vh) 100%)';
-    const clipTo = direction === 'forward'
-      ? 'polygon(-14vh 0, 200% 0, 200% 100%, calc(0% - 28vh) 100%)'
-      : 'polygon(calc(100% + 28vh) 0, -100% 0, -100% 100%, calc(100% + 14vh) 100%)';
-
-    const anim = incoming.layer.animate(
-      [{ clipPath: clipFrom }, { clipPath: clipTo }],
-      { duration: WIPE_DURATION, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' }
-    );
-    wipeAnimation = { incoming, outgoing, anim };
-    anim.onfinish = () => { commitWipe(); };
-  } else {
-    updateThemeDisplay();
-    populateLayer(activeLayer);
-    fitText(activeLayer);
-  }
-}
-
-// =====================================================================
-// Deck model + storage
-// =====================================================================
-
-const STORAGE_KEY = 'big-text.deck.v1';
-const SAMPLE_TEXT = 'Ship';
-
-let deck = null;
-
-function makeDeck(slides, settings) {
-  const list = slides && slides.length ? slides : [{ id: 'slide-1', text: SAMPLE_TEXT, align: 'center' }];
-  return {
-    version: 1,
-    settings: normalizeSettings(settings),
-    slides: list,
-    currentSlideId: list[0].id,
-    nextId: list.length + 1
-  };
-}
-
-function normalizeSettings(s) {
-  s = s || {};
-  return {
-    theme: THEMES.includes(s.theme) ? s.theme : 'paper',
-    font: FONTS.includes(s.font) ? s.font : 'sans',
-    transition: TRANSITIONS.includes(s.transition) ? s.transition : 'none'
-  };
-}
-
-function normalizeAlign(a) {
-  return (a === 'top' || a === 'bottom') ? a : 'center';
-}
-
-function seedDeck() {
-  return makeDeck(null, null);
-}
-
-function loadDeck() {
-  let raw;
-  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
-  if (!raw) return seedDeck();
-  try {
-    return reviveDeck(JSON.parse(raw));
-  } catch (e) {
-    return seedDeck();
-  }
-}
-
-// Build a clean, internally-consistent deck from arbitrary stored/imported
-// data: re-issue ids so nextId never collides and currentSlideId is valid.
-function reviveDeck(data) {
-  const incoming = (data && Array.isArray(data.slides)) ? data.slides : [];
-  const slides = incoming
-    .filter(s => s && typeof s.text === 'string')
-    .map((s, i) => ({ id: 'slide-' + (i + 1), text: s.text, align: normalizeAlign(s.align) }));
-  if (slides.length === 0) return seedDeck();
-  return makeDeck(slides, data && data.settings);
-}
-
-function saveDeck() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); } catch (e) { /* ignore quota/availability */ }
-}
-
-function currentSlideIndex() {
-  const i = deck.slides.findIndex(s => s.id === deck.currentSlideId);
-  return i >= 0 ? i : 0;
-}
-
-function currentSlide() {
-  return deck.slides[currentSlideIndex()];
-}
-
-// =====================================================================
-// Slide operations
-// =====================================================================
-
-function freshId() {
-  return 'slide-' + (deck.nextId++);
-}
-
-function newSlide() {
-  const id = freshId();
-  const at = currentSlideIndex();
-  deck.slides.splice(at + 1, 0, { id, text: '', align: 'center' });
-  deck.currentSlideId = id;
-  saveDeck();
-  renderEditor();
-  focusTextarea();
-}
-
-function deleteSlide() {
-  if (deck.slides.length <= 1) return;
-  const at = currentSlideIndex();
-  deck.slides.splice(at, 1);
-  const nextIdx = Math.min(at, deck.slides.length - 1);
-  deck.currentSlideId = deck.slides[nextIdx].id;
-  saveDeck();
-  renderEditor();
-}
-
-function reorderSlide(from, to) {
-  if (from === to || from < 0 || to < 0 || from >= deck.slides.length || to >= deck.slides.length) return;
-  const [moved] = deck.slides.splice(from, 1);
-  deck.slides.splice(to, 0, moved);
-  // selection follows the moved slide (id is stable)
-  deck.currentSlideId = moved.id;
-  saveDeck();
-  renderEditor();
-}
-
-function selectSlide(id) {
-  if (!deck.slides.some(s => s.id === id)) return;
-  deck.currentSlideId = id;
-  saveDeck();
-  renderEditor();
-  focusTextarea();
-}
-
-// =====================================================================
-// Editor view
-// =====================================================================
-
-const editorEl = document.getElementById('editor');
-const presentEl = document.getElementById('present');
-const listEl = document.getElementById('slide-list');
-const statusEl = document.getElementById('status');
-const themeWord = document.getElementById('set-theme');
-const fontWord = document.getElementById('set-font');
-const transitionWord = document.getElementById('set-transition');
-
-let statusTimer = null;
-function setStatus(msg, isError) {
-  statusEl.textContent = msg || '';
-  statusEl.classList.toggle('error', !!isError);
-  if (statusTimer) clearTimeout(statusTimer);
-  if (msg) statusTimer = setTimeout(() => { statusEl.textContent = ''; statusEl.classList.remove('error'); }, 4000);
-}
-
-function snippetFor(text) {
-  return (text.split('\n').find(l => l.trim() !== '') || '').trim();
-}
-
-// Fill an inactive row from slide text, showing it in full, marking empties.
-function setSnippet(el, text) {
-  el.textContent = text || 'Empty slide';
-  el.classList.toggle('empty', !text.trim());
-}
-
-// ---- Settings summary (click to cycle) ----
-
-const SETTING_LISTS = { theme: THEMES, font: FONTS, transition: TRANSITIONS };
-
-// Theme and font display their stored value verbatim; only transition shows a
-// friendlier label. Stored values are unchanged.
-const TRANSITION_LABELS = { none: 'no transition', wipe: 'wipe transition' };
-
-function renderSettings() {
-  themeWord.textContent = deck.settings.theme;
-  fontWord.textContent = deck.settings.font;
-  transitionWord.textContent = TRANSITION_LABELS[deck.settings.transition];
-}
-
-function cycleSetting(kind) {
-  const list = SETTING_LISTS[kind];
-  if (!list) return;
-  deck.settings[kind] = nextInCycle(list, deck.settings[kind]);
-  saveDeck();
-  renderSettings();
-}
-
-document.getElementById('settings').addEventListener('click', (e) => {
-  const word = e.target.closest('.set-word');
-  if (word) cycleSetting(word.dataset.kind);
-});
-
-// ---- Slide stack ----
-
-// Build the align/delete controls that sit beside the number in the open
-// slide's header.
-function buildControls(slide) {
-  const controls = document.createElement('div');
-  controls.className = 'controls';
-
-  const alignWrap = document.createElement('span');
-  alignWrap.className = 'align';
-  ['top', 'center', 'bottom'].forEach(a => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.dataset.align = a;
-    b.textContent = a;
-    if (slide.align === a) b.classList.add('on');
-    b.addEventListener('click', () => {
-      currentSlide().align = a;
-      saveDeck();
-      alignWrap.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.align === a));
-    });
-    alignWrap.appendChild(b);
-  });
-  controls.appendChild(alignWrap);
-
-  // Delete is hidden when only one slide remains. There is no Duplicate.
-  // It sits flush right (via .controls .delete margin-left:auto), so no
-  // separator is needed between it and the align group.
-  if (deck.slides.length > 1) {
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'delete';
-    del.textContent = 'delete';
-    del.addEventListener('click', deleteSlide);
-    controls.appendChild(del);
-  }
-
-  return controls;
-}
-
-// Build the editable textarea for the open slide's body.
-function buildTextarea(slide) {
-  const ta = document.createElement('textarea');
-  ta.id = 'slide-text';
-  ta.spellcheck = false;
-  ta.placeholder = 'Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.';
-  ta.value = slide.text;
-  // Grow the textarea to fit its content so editing never changes the row's
-  // height; also sized after render (see renderSlideList) once it has layout.
-  ta.addEventListener('input', () => { currentSlide().text = ta.value; saveDeck(); autosizeTextarea(ta); });
-  return ta;
-}
-
-// Render the full stack. Every slide is a row: a header (number + controls
-// over a hairline) followed by the body. The selected slide shows align/delete
-// controls in its header and an editable textarea in its body; inactive slides
-// show just the number and their full text, which opens for editing on click.
-function renderSlideList() {
-  listEl.innerHTML = '';
-  deck.slides.forEach((slide, i) => {
-    const open = slide.id === deck.currentSlideId;
-    const li = document.createElement('li');
-    li.className = 'slide-row' + (open ? ' selected' : '');
-    li.dataset.id = slide.id;
-    li.dataset.index = String(i);
-
-    const head = document.createElement('div');
-    head.className = 'slide-head';
-
-    // The number is a drag handle for mouse users and a reorder control for
-    // keyboard users (ArrowUp/ArrowDown move the slide; see onNumKey).
-    const num = document.createElement('button');
-    num.type = 'button';
-    num.className = 'num';
-    // Zero-padded display (01, 02, …). The accessible name must contain the
-    // visible "01" text (WCAG 2.5.3 Label in Name), so reuse the padded form.
-    const padded = String(i + 1).padStart(2, '0');
-    num.textContent = padded;
-    num.draggable = true;   // drag the number to reorder
-    num.setAttribute('aria-label', 'Slide ' + padded + '. Use arrow up or down to reorder');
-    head.appendChild(num);
-
-    // Controls show only for the open slide.
-    if (open) head.appendChild(buildControls(slide));
-    li.appendChild(head);
-
-    const body = document.createElement('div');
-    body.className = 'slide-body';
-    if (open) {
-      body.appendChild(buildTextarea(slide));
-    } else {
-      const snip = document.createElement('button');
-      snip.type = 'button';
-      snip.className = 'snippet';
-      setSnippet(snip, slide.text);
-      snip.setAttribute('aria-label', 'Edit slide ' + (i + 1) + ': ' + (snippetFor(slide.text) || 'empty slide'));
-      body.appendChild(snip);
-    }
-    li.appendChild(body);
-
-    listEl.appendChild(li);
-  });
-  // The textarea is now in the document, so scrollHeight is meaningful.
-  const ta = document.getElementById('slide-text');
-  if (ta) autosizeTextarea(ta);
-}
-
-function renderEditor() {
-  renderSettings();
-  renderSlideList();
-}
-
-function autosizeTextarea(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = ta.scrollHeight + 'px';
-}
-
-function focusTextarea() {
-  const ta = document.getElementById('slide-text');
-  if (ta) ta.focus();
-}
-
-document.getElementById('btn-new').addEventListener('click', newSlide);
-
-// ---- Open a collapsed slide (the open slide IS the selection) ----
-
-listEl.addEventListener('click', (e) => {
-  const row = e.target.closest('.slide-row');
-  if (!row || row.classList.contains('selected')) return;
-  selectSlide(row.dataset.id);
-});
-
-// ---- Drag the number to reorder ----
-
-let dragFrom = null;
-
-function clearDragOver() {
-  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
-}
-
-listEl.addEventListener('dragstart', (e) => {
-  const num = e.target.closest('.num');
-  if (!num) return;
-  const row = num.closest('.slide-row');
-  dragFrom = Number(row.dataset.index);
-  e.dataTransfer.effectAllowed = 'move';
-  // Some browsers require data to be set for drag to start.
-  try { e.dataTransfer.setData('text/plain', row.dataset.id); } catch (err) {}
-});
-
-listEl.addEventListener('dragover', (e) => {
-  if (dragFrom === null) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const row = e.target.closest('.slide-row');
-  clearDragOver();
-  if (row) row.classList.add('drag-over');
-});
-
-listEl.addEventListener('dragleave', (e) => {
-  const row = e.target.closest('.slide-row');
-  if (row && !row.contains(e.relatedTarget)) row.classList.remove('drag-over');
-});
-
-listEl.addEventListener('drop', (e) => {
-  if (dragFrom === null) return;
-  e.preventDefault();
-  const row = e.target.closest('.slide-row');
-  clearDragOver();
-  if (row) reorderSlide(dragFrom, Number(row.dataset.index));
-  dragFrom = null;
-});
-
-listEl.addEventListener('dragend', () => {
-  clearDragOver();
-  dragFrom = null;
-});
-
-// ---- Keyboard reorder: focus a slide number, then ArrowUp/ArrowDown ----
-
-listEl.addEventListener('keydown', (e) => {
-  const num = e.target.closest('.num');
-  if (!num) return;
-  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-  e.preventDefault();
-  const from = Number(num.closest('.slide-row').dataset.index);
-  const to = e.key === 'ArrowUp' ? from - 1 : from + 1;
-  if (to < 0 || to >= deck.slides.length) return;
-  reorderSlide(from, to);
-  // renderSlideList rebuilt the rows; move focus to the moved slide's number
-  // so a sequence of arrow presses keeps walking the same slide.
-  const moved = listEl.querySelector('.slide-row[data-index="' + to + '"] .num');
-  if (moved) moved.focus();
-});
-
-// =====================================================================
-// Present mode
-// =====================================================================
-
-let presenting = false;
-
-function enterPresent() {
-  presenting = true;
-  // Snapshot the deck into ephemeral present state. Cycling f/t/b below
-  // mutates only these vars, never deck.settings.
-  presentSlides = deck.slides.map(s => ({ text: s.text, align: s.align }));
-  currentIndex = currentSlideIndex();
-  currentTransition = deck.settings.transition;
-  applyFont(deck.settings.font);
-  applyTheme(deck.settings.theme);
-
-  editorEl.classList.add('hidden');
-  presentEl.classList.remove('hidden');
-
-  document.removeEventListener('keydown', onPresentKey);
-  document.addEventListener('keydown', onPresentKey);
-  renderSlide();
-}
-
-function exitPresent() {
-  presenting = false;
-  document.removeEventListener('keydown', onPresentKey);
-  if (wipeAnimation) commitWipe();
-
-  // Reset both layers to a clean state.
-  layerA.layer.classList.add('active');
-  layerB.layer.classList.remove('active');
-  layerA.text.style.visibility = '';
-  layerB.text.style.visibility = '';
-  activeLayer = layerA;
-
-  presentEl.classList.add('hidden');
-  editorEl.classList.remove('hidden');
-
-  // Restore the editor's saved theme/font (present cycling was ephemeral).
-  applyFont(deck.settings.font);
-  applyTheme(deck.settings.theme);
-  renderEditor();
-}
-
-function onPresentKey(e) {
-  switch (e.key) {
-    case 'Escape':
-      exitPresent();
-      e.preventDefault();
-      break;
-    case 'ArrowRight':
-    case ' ':
-    case 'Enter':
-      if (currentIndex < presentSlides.length - 1) { currentIndex++; renderSlide('forward'); }
-      e.preventDefault();
-      break;
-    case 'ArrowLeft':
-    case 'Backspace':
-      if (currentIndex > 0) { currentIndex--; renderSlide('backward'); }
-      e.preventDefault();
-      break;
-    case 'Home':
-      currentIndex = 0; renderSlide('backward');
-      e.preventDefault();
-      break;
-    case 'End':
-      currentIndex = presentSlides.length - 1; renderSlide('forward');
-      e.preventDefault();
-      break;
-    case 'f':
-      applyFont(nextInCycle(FONTS, currentFont));
-      renderSlide();
-      e.preventDefault();
-      break;
-    case 't':
-      applyTheme(nextInCycle(THEMES, currentTheme));
-      renderSlide();
-      e.preventDefault();
-      break;
-    case 'b': {
-      const vis = activeLayer.text.style.visibility === 'hidden' ? '' : 'hidden';
-      layerA.text.style.visibility = vis;
-      layerB.text.style.visibility = vis;
-      e.preventDefault();
-      break;
-    }
-  }
-}
-
-document.getElementById('btn-present').addEventListener('click', enterPresent);
-
-let resizeRaf;
-window.addEventListener('resize', () => {
-  if (!presenting) return;
-  cancelAnimationFrame(resizeRaf);
-  resizeRaf = requestAnimationFrame(() => renderSlide());
-});
-
-// =====================================================================
-// URL hash sharing
-// =====================================================================
-
-function base64urlEncode(str) {
-  // Encode UTF-8 safely, then make the base64 URL-safe.
-  const b64 = btoa(unescape(encodeURIComponent(str)));
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function base64urlDecode(str) {
-  let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (b64.length % 4) b64 += '=';
-  return decodeURIComponent(escape(atob(b64)));
-}
-
-function encodeDeck(d) {
-  const payload = {
-    version: 1,
-    settings: d.settings,
-    slides: d.slides.map(s => ({ id: s.id, text: s.text, align: s.align }))
-  };
-  return base64urlEncode(JSON.stringify(payload));
-}
-
-function shareUrl() {
-  const encoded = encodeDeck(deck);
-  const base = location.href.split('#')[0];
-  const url = base + '#deck=' + encoded;
-  history.replaceState(null, '', url);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(
-      () => setStatus('Share URL copied to clipboard'),
-      () => setStatus('Share URL ready in address bar')
-    );
-  } else {
-    setStatus('Share URL ready in address bar');
-  }
-}
-
-document.getElementById('btn-share').addEventListener('click', shareUrl);
-
-// Returns a decoded deck object from the current #deck= hash, or null.
-function deckFromHash() {
-  const match = location.hash.match(/(?:^#|[#&])deck=([^&]+)/);
-  if (!match) return undefined; // no hash present at all
-  try {
-    const json = base64urlDecode(match[1]);
-    const data = JSON.parse(json);
-    if (!data || !Array.isArray(data.slides) || data.slides.length === 0) return null;
-    return reviveDeck(data);
-  } catch (e) {
-    return null; // present but invalid
-  }
-}
-
-// =====================================================================
-// Boot
-// =====================================================================
-
-function clearHash() {
-  history.replaceState(null, '', location.href.split('#')[0]);
-}
-
-function boot() {
-  const fromHash = deckFromHash();
-  if (fromHash === null) {
-    // Hash present but invalid: keep local deck, surface a non-blocking error.
-    deck = loadDeck();
-    setStatus('Could not read shared deck from URL; kept your local deck', true);
-    clearHash();
-  } else if (fromHash) {
-    // Valid shared deck: import, save, select first slide, clear the hash.
-    deck = fromHash;
-    deck.currentSlideId = deck.slides[0].id;
-    saveDeck();
-    clearHash();
-  } else {
-    // No hash: load local or seed sample.
-    deck = loadDeck();
-    saveDeck();
-  }
-
-  // Editor chrome has its own styling, so we don't apply the slide theme/font
-  // classes to the document until presenting.
-  renderEditor();
-}
-
-boot();
-</script>
-</body>
+            .controls .align {
+                display: flex;
+                gap: 8px;
+                margin-left: -6px;
+            }
+            /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
+            .controls .align button,
+            .controls .delete {
+                display: inline-flex;
+                align-items: center;
+                min-height: 24px;
+                padding: 0 6px;
+            }
+            .controls .align button {
+                color: var(--muted);
+            }
+            .controls .align button:hover {
+                color: var(--ink);
+            }
+            .controls .align button.on {
+                color: var(--ink);
+                font-weight: 600;
+            }
+            .controls .delete {
+                margin-left: auto;
+                margin-right: -6px;
+            }
+            .controls .delete:hover {
+                color: #c41e3a;
+            }
+
+            .new-slide {
+                display: block;
+                margin: 8px 0 48px 32px;
+                padding-left: var(--num-col);
+                font-size: 1.125rem;
+                color: var(--muted);
+            }
+            .new-slide:hover {
+                color: var(--ink);
+            }
+
+            @media (max-width: 720px) {
+                .masthead {
+                    padding: 16px 18px 12px;
+                }
+                .masthead .title {
+                    font-size: 1.875rem;
+                }
+                .masthead-status {
+                    padding: 8px 18px 0;
+                }
+                .slide-stack {
+                    padding: 16px 18px 0;
+                }
+                .slide-body .snippet,
+                #slide-text {
+                    font-size: 1.5rem;
+                }
+                .new-slide {
+                    margin-left: 18px;
+                    font-size: 1rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Present mode: two stacked layers for wipe transitions. Hidden until Present. -->
+        <div id="present" class="hidden">
+            <div id="layer-a" class="layer active">
+                <div id="slide" class="slide">
+                    <div id="text" class="text"></div>
+                </div>
+            </div>
+            <div id="layer-b" class="layer">
+                <div class="slide">
+                    <div class="text"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor mode -->
+        <div id="editor">
+            <header class="masthead">
+                <h1 class="title">Show Big Words</h1>
+                <div class="masthead-right">
+                    <div class="settings" id="settings">
+                        <button
+                            class="set-word"
+                            id="set-theme"
+                            data-kind="theme"
+                            type="button"
+                        >
+                            paper
+                        </button>
+                        <span class="dot">·</span>
+                        <button
+                            class="set-word"
+                            id="set-font"
+                            data-kind="font"
+                            type="button"
+                        >
+                            sans
+                        </button>
+                        <span class="dot">·</span>
+                        <button
+                            class="set-word"
+                            id="set-transition"
+                            data-kind="transition"
+                            type="button"
+                        >
+                            no transition
+                        </button>
+                    </div>
+                    <button class="share" id="btn-share" type="button">
+                        share url
+                    </button>
+                    <button class="present" id="btn-present" type="button">
+                        Present →
+                    </button>
+                </div>
+            </header>
+
+            <div class="masthead-status" id="status"></div>
+
+            <ol id="slide-list" class="slide-stack"></ol>
+
+            <button class="new-slide" id="btn-new" type="button">
+                + New slide
+            </button>
+        </div>
+
+        <script>
+            // =====================================================================
+            // Slide rendering core (ported from big-text/lib/client.html)
+            // =====================================================================
+
+            // Minor-third type scale (1.2x ratio): round(1600 / 1.2^i) for i = 0..19
+            const SCALE = [
+                1334, 1112, 926, 772, 643, 536, 446, 372, 310, 258, 215, 179,
+                149, 124, 104, 86, 72, 60, 50, 42,
+            ];
+            const layerA = {
+                layer: document.getElementById("layer-a"),
+                slide: document.getElementById("slide"),
+                text: document.getElementById("text"),
+            };
+            const layerB = {
+                layer: document.getElementById("layer-b"),
+                slide: document.querySelector("#layer-b .slide"),
+                text: document.querySelector("#layer-b .text"),
+            };
+            let activeLayer = layerA;
+
+            const FONTS = ["sans", "mono", "serif", "pixel"];
+            const THEMES = ["paper", "ink", "presenter", "gradient"];
+            const TRANSITIONS = ["none", "wipe"];
+            const PRESENTER_COLORS = [
+                "blue",
+                "purple",
+                "pink",
+                "red",
+                "orange",
+                "ink",
+                "paper",
+            ];
+
+            // Next value after `cur` in `list`, wrapping back to the start.
+            function nextInCycle(list, cur) {
+                return list[(list.indexOf(cur) + 1) % list.length];
+            }
+
+            // Ephemeral present-mode state. These never write back to the deck.
+            let presentSlides = [];
+            let currentIndex = 0;
+            let currentFont = "sans";
+            let currentTheme = "paper";
+            let currentTransition = "none";
+
+            function applyFont(font) {
+                currentFont = font;
+                const root = document.documentElement;
+                // Each non-default font maps to a `font-<value>` class; 'sans' is the
+                // default and carries no class.
+                root.classList.remove("font-mono", "font-serif", "font-pixel");
+                if (font !== "sans") root.classList.add("font-" + font);
+            }
+
+            function applyTheme(theme) {
+                currentTheme = theme;
+                updateThemeDisplay();
+            }
+
+            function updateThemeDisplay() {
+                const root = document.documentElement;
+                [
+                    "ink",
+                    "blue",
+                    "purple",
+                    "pink",
+                    "red",
+                    "orange",
+                    "gradient",
+                ].forEach((t) => root.classList.remove(t));
+                if (currentTheme === "presenter") {
+                    const color =
+                        PRESENTER_COLORS[
+                            currentIndex % PRESENTER_COLORS.length
+                        ];
+                    if (color !== "paper") root.classList.add(color);
+                } else if (currentTheme === "gradient") {
+                    root.classList.add("gradient");
+                } else if (currentTheme === "ink") {
+                    root.classList.add("ink");
+                }
+            }
+
+            function fitText(layer) {
+                const slideEl = layer.slide;
+                const textEl = layer.text;
+                const maxH = slideEl.clientHeight;
+                const maxW = slideEl.clientWidth;
+                const annotations = textEl.querySelectorAll(".annotation");
+                const subtextEl = textEl.querySelector(".subtext");
+                for (let i = 0; i < SCALE.length; i++) {
+                    textEl.style.fontSize = SCALE[i] + "px";
+                    if (subtextEl)
+                        subtextEl.style.fontSize =
+                            Math.round(SCALE[i] / 2) + "px";
+                    const annSize = Math.min(i + 4, SCALE.length - 1);
+                    annotations.forEach(
+                        (a) => (a.style.fontSize = SCALE[annSize] + "px"),
+                    );
+                    if (textEl.scrollHeight > maxH) continue;
+                    textEl.style.overflowWrap = "normal";
+                    const overflows = textEl.scrollWidth > maxW;
+                    textEl.style.overflowWrap = "";
+                    if (overflows) continue;
+                    return;
+                }
+            }
+
+            function populateLayer(layer) {
+                const textEl = layer.text;
+                const slideEl = layer.slide;
+                slideEl.classList.remove("align-top", "align-bottom");
+                if (presentSlides.length === 0) {
+                    textEl.textContent = "";
+                    return;
+                }
+                const slide = presentSlides[currentIndex];
+                if (slide.align === "top") slideEl.classList.add("align-top");
+                else if (slide.align === "bottom")
+                    slideEl.classList.add("align-bottom");
+                const escaped = slide.text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+                const lines = escaped.split("\n");
+                const blankIdx = lines.findIndex((l) => l.trim() === "");
+                const mainLines =
+                    blankIdx >= 0 ? lines.slice(0, blankIdx) : lines;
+                const subLines = blankIdx >= 0 ? lines.slice(blankIdx + 1) : [];
+
+                function renderLine(line) {
+                    if (line.trim() === "")
+                        return '<div class="blank">&nbsp;</div>';
+                    const annotated = line.replace(
+                        /\(\((.+?)\)\)/g,
+                        '<span class="annotation">$1</span>',
+                    );
+                    if (annotated.startsWith("\t"))
+                        return (
+                            '<div class="center">' +
+                            annotated.replace(/^\t+/, "") +
+                            "</div>"
+                        );
+                    return "<div>" + annotated + "</div>";
+                }
+
+                let html = mainLines.map(renderLine).join("");
+                if (subLines.length)
+                    html +=
+                        '<div class="blank">&nbsp;</div><div class="subtext">' +
+                        subLines.map(renderLine).join("") +
+                        "</div>";
+                textEl.innerHTML = html;
+            }
+
+            let wipeAnimation = null;
+            const WIPE_DURATION = 1200;
+
+            function commitWipe() {
+                if (!wipeAnimation) return;
+                const { incoming, outgoing, anim } = wipeAnimation;
+                wipeAnimation = null;
+                incoming.layer.classList.add("active");
+                anim.cancel();
+                outgoing.layer.classList.remove("active");
+                incoming.layer.style.zIndex = "";
+                outgoing.layer.style.zIndex = "";
+                outgoing.layer.style.background = "";
+                outgoing.layer.style.color = "";
+                outgoing.text.textContent = "";
+                activeLayer = incoming;
+            }
+
+            function renderSlide(direction) {
+                if (currentIndex >= presentSlides.length)
+                    currentIndex = presentSlides.length - 1;
+                if (currentIndex < 0) currentIndex = 0;
+
+                if (currentTransition === "wipe" && direction) {
+                    if (wipeAnimation) {
+                        commitWipe();
+                    }
+                    const incoming = activeLayer === layerA ? layerB : layerA;
+                    const outgoing = activeLayer;
+
+                    // Freeze outgoing appearance before theme changes
+                    if (currentTheme !== "gradient") {
+                        const cs = getComputedStyle(outgoing.layer);
+                        outgoing.layer.style.background = cs.backgroundColor;
+                        outgoing.layer.style.color = cs.color;
+                    }
+
+                    updateThemeDisplay();
+
+                    populateLayer(incoming);
+                    fitText(incoming);
+
+                    // Stack incoming on top, both visible during animation
+                    incoming.layer.style.zIndex = 2;
+                    outgoing.layer.style.zIndex = 1;
+                    outgoing.layer.classList.add("active");
+
+                    // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
+                    const clipFrom =
+                        direction === "forward"
+                            ? "polygon(calc(100% + 14vh) 0, 200% 0, 200% 100%, 100% 100%)"
+                            : "polygon(0 0, -100% 0, -100% 100%, calc(0% - 14vh) 100%)";
+                    const clipTo =
+                        direction === "forward"
+                            ? "polygon(-14vh 0, 200% 0, 200% 100%, calc(0% - 28vh) 100%)"
+                            : "polygon(calc(100% + 28vh) 0, -100% 0, -100% 100%, calc(100% + 14vh) 100%)";
+
+                    const anim = incoming.layer.animate(
+                        [{ clipPath: clipFrom }, { clipPath: clipTo }],
+                        {
+                            duration: WIPE_DURATION,
+                            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+                            fill: "forwards",
+                        },
+                    );
+                    wipeAnimation = { incoming, outgoing, anim };
+                    anim.onfinish = () => {
+                        commitWipe();
+                    };
+                } else {
+                    updateThemeDisplay();
+                    populateLayer(activeLayer);
+                    fitText(activeLayer);
+                }
+            }
+
+            // =====================================================================
+            // Deck model + storage
+            // =====================================================================
+
+            const STORAGE_KEY = "big-text.deck.v1";
+            const SAMPLE_TEXT = "Ship";
+
+            let deck = null;
+
+            function makeDeck(slides, settings) {
+                const list =
+                    slides && slides.length
+                        ? slides
+                        : [
+                              {
+                                  id: "slide-1",
+                                  text: SAMPLE_TEXT,
+                                  align: "center",
+                              },
+                          ];
+                return {
+                    version: 1,
+                    settings: normalizeSettings(settings),
+                    slides: list,
+                    currentSlideId: list[0].id,
+                    nextId: list.length + 1,
+                };
+            }
+
+            function normalizeSettings(s) {
+                s = s || {};
+                return {
+                    theme: THEMES.includes(s.theme) ? s.theme : "paper",
+                    font: FONTS.includes(s.font) ? s.font : "sans",
+                    transition: TRANSITIONS.includes(s.transition)
+                        ? s.transition
+                        : "none",
+                };
+            }
+
+            function normalizeAlign(a) {
+                return a === "top" || a === "bottom" ? a : "center";
+            }
+
+            function seedDeck() {
+                return makeDeck(null, null);
+            }
+
+            function loadDeck() {
+                let raw;
+                try {
+                    raw = localStorage.getItem(STORAGE_KEY);
+                } catch (e) {
+                    raw = null;
+                }
+                if (!raw) return seedDeck();
+                try {
+                    return reviveDeck(JSON.parse(raw));
+                } catch (e) {
+                    return seedDeck();
+                }
+            }
+
+            // Build a clean, internally-consistent deck from arbitrary stored/imported
+            // data: re-issue ids so nextId never collides and currentSlideId is valid.
+            function reviveDeck(data) {
+                const incoming =
+                    data && Array.isArray(data.slides) ? data.slides : [];
+                const slides = incoming
+                    .filter((s) => s && typeof s.text === "string")
+                    .map((s, i) => ({
+                        id: "slide-" + (i + 1),
+                        text: s.text,
+                        align: normalizeAlign(s.align),
+                    }));
+                if (slides.length === 0) return seedDeck();
+                return makeDeck(slides, data && data.settings);
+            }
+
+            function saveDeck() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
+                } catch (e) {
+                    /* ignore quota/availability */
+                }
+            }
+
+            function currentSlideIndex() {
+                const i = deck.slides.findIndex(
+                    (s) => s.id === deck.currentSlideId,
+                );
+                return i >= 0 ? i : 0;
+            }
+
+            function currentSlide() {
+                return deck.slides[currentSlideIndex()];
+            }
+
+            // =====================================================================
+            // Slide operations
+            // =====================================================================
+
+            function freshId() {
+                return "slide-" + deck.nextId++;
+            }
+
+            function newSlide() {
+                const id = freshId();
+                const at = currentSlideIndex();
+                deck.slides.splice(at + 1, 0, {
+                    id,
+                    text: "",
+                    align: "center",
+                });
+                deck.currentSlideId = id;
+                saveDeck();
+                renderEditor();
+                focusTextarea();
+            }
+
+            function deleteSlide() {
+                if (deck.slides.length <= 1) return;
+                const at = currentSlideIndex();
+                deck.slides.splice(at, 1);
+                const nextIdx = Math.min(at, deck.slides.length - 1);
+                deck.currentSlideId = deck.slides[nextIdx].id;
+                saveDeck();
+                renderEditor();
+            }
+
+            function reorderSlide(from, to) {
+                if (
+                    from === to ||
+                    from < 0 ||
+                    to < 0 ||
+                    from >= deck.slides.length ||
+                    to >= deck.slides.length
+                )
+                    return;
+                const [moved] = deck.slides.splice(from, 1);
+                deck.slides.splice(to, 0, moved);
+                // selection follows the moved slide (id is stable)
+                deck.currentSlideId = moved.id;
+                saveDeck();
+                renderEditor();
+            }
+
+            function selectSlide(id) {
+                if (!deck.slides.some((s) => s.id === id)) return;
+                deck.currentSlideId = id;
+                saveDeck();
+                renderEditor();
+                focusTextarea();
+            }
+
+            // =====================================================================
+            // Editor view
+            // =====================================================================
+
+            const editorEl = document.getElementById("editor");
+            const presentEl = document.getElementById("present");
+            const listEl = document.getElementById("slide-list");
+            const statusEl = document.getElementById("status");
+            const themeWord = document.getElementById("set-theme");
+            const fontWord = document.getElementById("set-font");
+            const transitionWord = document.getElementById("set-transition");
+
+            let statusTimer = null;
+            function setStatus(msg, isError) {
+                statusEl.textContent = msg || "";
+                statusEl.classList.toggle("error", !!isError);
+                if (statusTimer) clearTimeout(statusTimer);
+                if (msg)
+                    statusTimer = setTimeout(() => {
+                        statusEl.textContent = "";
+                        statusEl.classList.remove("error");
+                    }, 4000);
+            }
+
+            function snippetFor(text) {
+                return (
+                    text.split("\n").find((l) => l.trim() !== "") || ""
+                ).trim();
+            }
+
+            // Fill an inactive row from slide text, showing it in full, marking empties.
+            function setSnippet(el, text) {
+                el.textContent = text || "Empty slide";
+                el.classList.toggle("empty", !text.trim());
+            }
+
+            // ---- Settings summary (click to cycle) ----
+
+            const SETTING_LISTS = {
+                theme: THEMES,
+                font: FONTS,
+                transition: TRANSITIONS,
+            };
+
+            // Theme and font display their stored value verbatim; only transition shows a
+            // friendlier label. Stored values are unchanged.
+            const TRANSITION_LABELS = {
+                none: "no transition",
+                wipe: "wipe transition",
+            };
+
+            function renderSettings() {
+                themeWord.textContent = deck.settings.theme;
+                fontWord.textContent = deck.settings.font;
+                transitionWord.textContent =
+                    TRANSITION_LABELS[deck.settings.transition];
+            }
+
+            function cycleSetting(kind) {
+                const list = SETTING_LISTS[kind];
+                if (!list) return;
+                deck.settings[kind] = nextInCycle(list, deck.settings[kind]);
+                saveDeck();
+                renderSettings();
+            }
+
+            document
+                .getElementById("settings")
+                .addEventListener("click", (e) => {
+                    const word = e.target.closest(".set-word");
+                    if (word) cycleSetting(word.dataset.kind);
+                });
+
+            // ---- Slide stack ----
+
+            // Build the align/delete controls that sit beside the number in the open
+            // slide's header.
+            function buildControls(slide) {
+                const controls = document.createElement("div");
+                controls.className = "controls";
+
+                const alignWrap = document.createElement("span");
+                alignWrap.className = "align";
+                ["top", "center", "bottom"].forEach((a) => {
+                    const b = document.createElement("button");
+                    b.type = "button";
+                    b.dataset.align = a;
+                    b.textContent = a;
+                    if (slide.align === a) b.classList.add("on");
+                    b.addEventListener("click", () => {
+                        currentSlide().align = a;
+                        saveDeck();
+                        alignWrap
+                            .querySelectorAll("button")
+                            .forEach((x) =>
+                                x.classList.toggle("on", x.dataset.align === a),
+                            );
+                    });
+                    alignWrap.appendChild(b);
+                });
+                controls.appendChild(alignWrap);
+
+                // Delete is hidden when only one slide remains. There is no Duplicate.
+                // It sits flush right (via .controls .delete margin-left:auto), so no
+                // separator is needed between it and the align group.
+                if (deck.slides.length > 1) {
+                    const del = document.createElement("button");
+                    del.type = "button";
+                    del.className = "delete";
+                    del.textContent = "delete";
+                    del.addEventListener("click", deleteSlide);
+                    controls.appendChild(del);
+                }
+
+                return controls;
+            }
+
+            // Build the editable textarea for the open slide's body.
+            function buildTextarea(slide) {
+                const ta = document.createElement("textarea");
+                ta.id = "slide-text";
+                ta.spellcheck = false;
+                ta.placeholder =
+                    "Type slide text. Blank line makes subtext. Tab-indent centers a line. ((parentheses)) make an annotation.";
+                ta.value = slide.text;
+                // Grow the textarea to fit its content so editing never changes the row's
+                // height; also sized after render (see renderSlideList) once it has layout.
+                ta.addEventListener("input", () => {
+                    currentSlide().text = ta.value;
+                    saveDeck();
+                    autosizeTextarea(ta);
+                });
+                return ta;
+            }
+
+            // Render the full stack. Every slide is a row: a header (number + controls
+            // over a hairline) followed by the body. The selected slide shows align/delete
+            // controls in its header and an editable textarea in its body; inactive slides
+            // show just the number and their full text, which opens for editing on click.
+            function renderSlideList() {
+                listEl.innerHTML = "";
+                deck.slides.forEach((slide, i) => {
+                    const open = slide.id === deck.currentSlideId;
+                    const li = document.createElement("li");
+                    li.className = "slide-row" + (open ? " selected" : "");
+                    li.dataset.id = slide.id;
+                    li.dataset.index = String(i);
+
+                    const head = document.createElement("div");
+                    head.className = "slide-head";
+
+                    // The number is a drag handle for mouse users and a reorder control for
+                    // keyboard users (ArrowUp/ArrowDown move the slide; see onNumKey).
+                    const num = document.createElement("button");
+                    num.type = "button";
+                    num.className = "num";
+                    // Zero-padded display (01, 02, …). The accessible name must contain the
+                    // visible "01" text (WCAG 2.5.3 Label in Name), so reuse the padded form.
+                    const padded = String(i + 1).padStart(2, "0");
+                    num.textContent = padded;
+                    num.draggable = true; // drag the number to reorder
+                    num.setAttribute(
+                        "aria-label",
+                        "Slide " + padded + ". Use arrow up or down to reorder",
+                    );
+                    head.appendChild(num);
+
+                    // Controls show only for the open slide.
+                    if (open) head.appendChild(buildControls(slide));
+                    li.appendChild(head);
+
+                    const body = document.createElement("div");
+                    body.className = "slide-body";
+                    if (open) {
+                        body.appendChild(buildTextarea(slide));
+                    } else {
+                        const snip = document.createElement("button");
+                        snip.type = "button";
+                        snip.className = "snippet";
+                        setSnippet(snip, slide.text);
+                        snip.setAttribute(
+                            "aria-label",
+                            "Edit slide " +
+                                (i + 1) +
+                                ": " +
+                                (snippetFor(slide.text) || "empty slide"),
+                        );
+                        body.appendChild(snip);
+                    }
+                    li.appendChild(body);
+
+                    listEl.appendChild(li);
+                });
+                // The textarea is now in the document, so scrollHeight is meaningful.
+                const ta = document.getElementById("slide-text");
+                if (ta) autosizeTextarea(ta);
+            }
+
+            function renderEditor() {
+                renderSettings();
+                renderSlideList();
+            }
+
+            function autosizeTextarea(ta) {
+                ta.style.height = "auto";
+                ta.style.height = ta.scrollHeight + "px";
+            }
+
+            function focusTextarea() {
+                const ta = document.getElementById("slide-text");
+                if (ta) ta.focus();
+            }
+
+            document
+                .getElementById("btn-new")
+                .addEventListener("click", newSlide);
+
+            // ---- Open a collapsed slide (the open slide IS the selection) ----
+
+            listEl.addEventListener("click", (e) => {
+                const row = e.target.closest(".slide-row");
+                if (!row || row.classList.contains("selected")) return;
+                selectSlide(row.dataset.id);
+            });
+
+            // ---- Drag the number to reorder ----
+
+            let dragFrom = null;
+
+            function clearDragOver() {
+                listEl
+                    .querySelectorAll(".drag-over")
+                    .forEach((r) => r.classList.remove("drag-over"));
+            }
+
+            listEl.addEventListener("dragstart", (e) => {
+                const num = e.target.closest(".num");
+                if (!num) return;
+                const row = num.closest(".slide-row");
+                dragFrom = Number(row.dataset.index);
+                e.dataTransfer.effectAllowed = "move";
+                // Some browsers require data to be set for drag to start.
+                try {
+                    e.dataTransfer.setData("text/plain", row.dataset.id);
+                } catch (err) {}
+            });
+
+            listEl.addEventListener("dragover", (e) => {
+                if (dragFrom === null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                const row = e.target.closest(".slide-row");
+                clearDragOver();
+                if (row) row.classList.add("drag-over");
+            });
+
+            listEl.addEventListener("dragleave", (e) => {
+                const row = e.target.closest(".slide-row");
+                if (row && !row.contains(e.relatedTarget))
+                    row.classList.remove("drag-over");
+            });
+
+            listEl.addEventListener("drop", (e) => {
+                if (dragFrom === null) return;
+                e.preventDefault();
+                const row = e.target.closest(".slide-row");
+                clearDragOver();
+                if (row) reorderSlide(dragFrom, Number(row.dataset.index));
+                dragFrom = null;
+            });
+
+            listEl.addEventListener("dragend", () => {
+                clearDragOver();
+                dragFrom = null;
+            });
+
+            // ---- Keyboard reorder: focus a slide number, then ArrowUp/ArrowDown ----
+
+            listEl.addEventListener("keydown", (e) => {
+                const num = e.target.closest(".num");
+                if (!num) return;
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                e.preventDefault();
+                const from = Number(num.closest(".slide-row").dataset.index);
+                const to = e.key === "ArrowUp" ? from - 1 : from + 1;
+                if (to < 0 || to >= deck.slides.length) return;
+                reorderSlide(from, to);
+                // renderSlideList rebuilt the rows; move focus to the moved slide's number
+                // so a sequence of arrow presses keeps walking the same slide.
+                const moved = listEl.querySelector(
+                    '.slide-row[data-index="' + to + '"] .num',
+                );
+                if (moved) moved.focus();
+            });
+
+            // =====================================================================
+            // Present mode
+            // =====================================================================
+
+            let presenting = false;
+
+            function enterPresent() {
+                presenting = true;
+                // Snapshot the deck into ephemeral present state. Cycling f/t/b below
+                // mutates only these vars, never deck.settings.
+                presentSlides = deck.slides.map((s) => ({
+                    text: s.text,
+                    align: s.align,
+                }));
+                currentIndex = currentSlideIndex();
+                currentTransition = deck.settings.transition;
+                applyFont(deck.settings.font);
+                applyTheme(deck.settings.theme);
+
+                editorEl.classList.add("hidden");
+                presentEl.classList.remove("hidden");
+
+                document.removeEventListener("keydown", onPresentKey);
+                document.addEventListener("keydown", onPresentKey);
+                renderSlide();
+            }
+
+            function exitPresent() {
+                presenting = false;
+                document.removeEventListener("keydown", onPresentKey);
+                if (wipeAnimation) commitWipe();
+
+                // Reset both layers to a clean state.
+                layerA.layer.classList.add("active");
+                layerB.layer.classList.remove("active");
+                layerA.text.style.visibility = "";
+                layerB.text.style.visibility = "";
+                activeLayer = layerA;
+
+                presentEl.classList.add("hidden");
+                editorEl.classList.remove("hidden");
+
+                // Restore the editor's saved theme/font (present cycling was ephemeral).
+                applyFont(deck.settings.font);
+                applyTheme(deck.settings.theme);
+                renderEditor();
+            }
+
+            function onPresentKey(e) {
+                switch (e.key) {
+                    case "Escape":
+                        exitPresent();
+                        e.preventDefault();
+                        break;
+                    case "ArrowRight":
+                    case " ":
+                    case "Enter":
+                        if (currentIndex < presentSlides.length - 1) {
+                            currentIndex++;
+                            renderSlide("forward");
+                        }
+                        e.preventDefault();
+                        break;
+                    case "ArrowLeft":
+                    case "Backspace":
+                        if (currentIndex > 0) {
+                            currentIndex--;
+                            renderSlide("backward");
+                        }
+                        e.preventDefault();
+                        break;
+                    case "Home":
+                        currentIndex = 0;
+                        renderSlide("backward");
+                        e.preventDefault();
+                        break;
+                    case "End":
+                        currentIndex = presentSlides.length - 1;
+                        renderSlide("forward");
+                        e.preventDefault();
+                        break;
+                    case "f":
+                        applyFont(nextInCycle(FONTS, currentFont));
+                        renderSlide();
+                        e.preventDefault();
+                        break;
+                    case "t":
+                        applyTheme(nextInCycle(THEMES, currentTheme));
+                        renderSlide();
+                        e.preventDefault();
+                        break;
+                    case "b": {
+                        const vis =
+                            activeLayer.text.style.visibility === "hidden"
+                                ? ""
+                                : "hidden";
+                        layerA.text.style.visibility = vis;
+                        layerB.text.style.visibility = vis;
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            }
+
+            document
+                .getElementById("btn-present")
+                .addEventListener("click", enterPresent);
+
+            let resizeRaf;
+            window.addEventListener("resize", () => {
+                if (!presenting) return;
+                cancelAnimationFrame(resizeRaf);
+                resizeRaf = requestAnimationFrame(() => renderSlide());
+            });
+
+            // =====================================================================
+            // URL hash sharing
+            // =====================================================================
+
+            function base64urlEncode(str) {
+                // Encode UTF-8 safely, then make the base64 URL-safe.
+                const b64 = btoa(unescape(encodeURIComponent(str)));
+                return b64
+                    .replace(/\+/g, "-")
+                    .replace(/\//g, "_")
+                    .replace(/=+$/, "");
+            }
+
+            function base64urlDecode(str) {
+                let b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+                while (b64.length % 4) b64 += "=";
+                return decodeURIComponent(escape(atob(b64)));
+            }
+
+            function encodeDeck(d) {
+                const payload = {
+                    version: 1,
+                    settings: d.settings,
+                    slides: d.slides.map((s) => ({
+                        id: s.id,
+                        text: s.text,
+                        align: s.align,
+                    })),
+                };
+                return base64urlEncode(JSON.stringify(payload));
+            }
+
+            function shareUrl() {
+                const encoded = encodeDeck(deck);
+                const base = location.href.split("#")[0];
+                const url = base + "#deck=" + encoded;
+                history.replaceState(null, "", url);
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(
+                        () => setStatus("Share URL copied to clipboard"),
+                        () => setStatus("Share URL ready in address bar"),
+                    );
+                } else {
+                    setStatus("Share URL ready in address bar");
+                }
+            }
+
+            document
+                .getElementById("btn-share")
+                .addEventListener("click", shareUrl);
+
+            // Returns a decoded deck object from the current #deck= hash, or null.
+            function deckFromHash() {
+                const match = location.hash.match(/(?:^#|[#&])deck=([^&]+)/);
+                if (!match) return undefined; // no hash present at all
+                try {
+                    const json = base64urlDecode(match[1]);
+                    const data = JSON.parse(json);
+                    if (
+                        !data ||
+                        !Array.isArray(data.slides) ||
+                        data.slides.length === 0
+                    )
+                        return null;
+                    return reviveDeck(data);
+                } catch (e) {
+                    return null; // present but invalid
+                }
+            }
+
+            // =====================================================================
+            // Boot
+            // =====================================================================
+
+            function clearHash() {
+                history.replaceState(null, "", location.href.split("#")[0]);
+            }
+
+            function boot() {
+                const fromHash = deckFromHash();
+                if (fromHash === null) {
+                    // Hash present but invalid: keep local deck, surface a non-blocking error.
+                    deck = loadDeck();
+                    setStatus(
+                        "Could not read shared deck from URL; kept your local deck",
+                        true,
+                    );
+                    clearHash();
+                } else if (fromHash) {
+                    // Valid shared deck: import, save, select first slide, clear the hash.
+                    deck = fromHash;
+                    deck.currentSlideId = deck.slides[0].id;
+                    saveDeck();
+                    clearHash();
+                } else {
+                    // No hash: load local or seed sample.
+                    deck = loadDeck();
+                    saveDeck();
+                }
+
+                // Editor chrome has its own styling, so we don't apply the slide theme/font
+                // classes to the document until presenting.
+                renderEditor();
+            }
+
+            boot();
+        </script>
+    </body>
 </html>
