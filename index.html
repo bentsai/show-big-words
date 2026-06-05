@@ -466,7 +466,7 @@
             .align {
                 display: inline-flex;
                 flex-direction: column;
-                align-items: flex-end;
+                align-items: center;
                 gap: 2px;
                 position: absolute;
                 top: 0;
@@ -1108,12 +1108,6 @@
                     "Move slide. Use arrow up or down to reorder",
                 );
                 controls.appendChild(move);
-
-                const sep = document.createElement("span");
-                sep.className = "dot";
-                sep.setAttribute("aria-hidden", "true");
-                sep.textContent = "·";
-                controls.appendChild(sep);
 
                 // Delete is hidden when only one slide remains. There is no Duplicate.
                 // It sits flush right (via .controls .delete margin-left:auto), so no
