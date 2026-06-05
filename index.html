@@ -314,9 +314,8 @@
                 box-shadow: inset 0 2px 0 0 var(--ink);
             }
 
-            /* Header and body share one grid: column 1 is the number gutter,
-     column 2 holds the controls (header) and the content (body). Aligning both
-     rows to the same track means controls and content always share a left edge,
+            /* Header and body share one grid: column 1 is the number gutter and
+     column 2 is the slide editor. Controls and content keep the same left edge,
      whatever the number's width. */
             .slide-head,
             .slide-body {
@@ -358,8 +357,15 @@
             }
             /* Body content occupies only the content column (column 2). */
             .slide-body .snippet,
-            .slide-body #slide-text {
+            .slide-body .slide-editor {
                 grid-column: 2;
+            }
+            .slide-editor {
+                position: relative;
+                width: 100%;
+                box-sizing: border-box;
+                padding-right: 40px;
+                margin-bottom: -4px;
             }
             .slide-body .snippet {
                 display: block;
@@ -387,8 +393,6 @@
 
             #slide-text {
                 width: 100%;
-                /* Cap at a comfortable reading measure; full text wraps within it. */
-                max-width: 80ch;
                 /* Height is set to fit content by autosizeTextarea() in JS, so opening a slide for
        editing matches the height of its full-text view — no expand/collapse. */
                 height: auto;
@@ -415,22 +419,18 @@
                 outline: none;
                 background: rgba(26, 26, 26, 0.05);
             }
-            /* Controls fill the content column beside the number; delete is pushed flush right. */
+            /* Controls align to the slide editor width; delete is pushed flush right. */
             .controls {
                 display: flex;
                 align-items: center;
                 gap: 14px;
+                width: 100%;
                 font-size: 0.8125rem;
                 color: var(--muted);
-            }
-            .controls .align {
-                display: flex;
-                gap: 8px;
             }
             /* 24px min target (WCAG 2.5.8); padding gives even the short "top" enough width. */
             .controls .insert,
             .controls .move,
-            .controls .align [data-align],
             .controls .delete {
                 display: inline-flex;
                 align-items: center;
@@ -463,14 +463,24 @@
             }
             /* Read-only alignment indicator: the detected option is lit, the rest are
      dimmed. Not interactive — alignment is set by padding the text with blanks. */
-            .controls .align {
+            .align {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 2px;
+                position: absolute;
+                top: 0;
+                right: -6px;
+                min-width: 24px;
+                line-height: 1;
                 cursor: default;
+                color: var(--muted);
             }
-            .controls .align [data-align] {
+            .align [data-align] {
                 color: var(--faint, var(--muted));
                 opacity: 0.5;
             }
-            .controls .align [data-align].on {
+            .align [data-align].on {
                 color: var(--ink);
                 opacity: 1;
                 font-weight: 600;
@@ -1064,15 +1074,20 @@
 
             // ---- Slide stack ----
 
-            // Build the align/delete controls that sit beside the number in the open
-            // slide's header.
+            const ALIGN_SYMBOLS = {
+                top: "↥",
+                center: "‐",
+                bottom: "↧",
+            };
+
+            // Build the deck controls that sit beside the number in the open slide's
+            // header.
             function buildControls(slide) {
                 const controls = document.createElement("div");
                 controls.className = "controls";
 
                 // Insert and move both act on the deck (add a slide after this one,
-                // reorder this one), so they lead the row as a group and are set off by
-                // a separator from the alignment group, which formats slide content.
+                // reorder this one), so they lead the row as a group.
                 const insert = document.createElement("button");
                 insert.type = "button";
                 insert.className = "insert";
@@ -1100,24 +1115,9 @@
                 sep.textContent = "·";
                 controls.appendChild(sep);
 
-                // Alignment is derived from the text (see parseSlide), so these are
-                // read-only indicators of the detected state, not buttons that set it.
-                // You change alignment by padding the text with blank lines.
-                const alignWrap = document.createElement("span");
-                alignWrap.className = "align";
-                alignWrap.setAttribute("role", "status");
-                ["top", "center", "bottom"].forEach((a) => {
-                    const word = document.createElement("span");
-                    word.dataset.align = a;
-                    word.textContent = a;
-                    alignWrap.appendChild(word);
-                });
-                lightAlign(alignWrap, parseSlide(slide.text).align);
-                controls.appendChild(alignWrap);
-
                 // Delete is hidden when only one slide remains. There is no Duplicate.
                 // It sits flush right (via .controls .delete margin-left:auto), so no
-                // separator is needed between it and the align group.
+                // separator is needed after the deck controls.
                 if (deck.slides.length > 1) {
                     const del = document.createElement("button");
                     del.type = "button";
@@ -1128,6 +1128,22 @@
                 }
 
                 return controls;
+            }
+
+            // Alignment is derived from the text (see parseSlide), so this is a
+            // read-only indicator of the detected state, not a set of buttons.
+            function buildAlignIndicator(slide) {
+                const alignWrap = document.createElement("span");
+                alignWrap.className = "align";
+                alignWrap.setAttribute("role", "status");
+                ["top", "center", "bottom"].forEach((a) => {
+                    const symbol = document.createElement("span");
+                    symbol.dataset.align = a;
+                    symbol.textContent = ALIGN_SYMBOLS[a];
+                    alignWrap.appendChild(symbol);
+                });
+                lightAlign(alignWrap, parseSlide(slide.text).align);
+                return alignWrap;
             }
 
             // Light the detected option in an align indicator and dim the rest.
@@ -1201,7 +1217,11 @@
                     const body = document.createElement("div");
                     body.className = "slide-body";
                     if (open) {
-                        body.appendChild(buildTextarea(slide));
+                        const editor = document.createElement("div");
+                        editor.className = "slide-editor";
+                        editor.appendChild(buildTextarea(slide));
+                        editor.appendChild(buildAlignIndicator(slide));
+                        body.appendChild(editor);
                     } else {
                         const snip = document.createElement("button");
                         snip.type = "button";
