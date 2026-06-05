@@ -602,14 +602,14 @@ const SAMPLE_TEXT = 'Ship';
 
 let deck = null;
 
-function makeDeck(slides, settings, nextId) {
+function makeDeck(slides, settings) {
   const list = slides && slides.length ? slides : [{ id: 'slide-1', text: SAMPLE_TEXT, align: 'center' }];
   return {
     version: 1,
     settings: normalizeSettings(settings),
     slides: list,
     currentSlideId: list[0].id,
-    nextId: nextId || list.length + 1
+    nextId: list.length + 1
   };
 }
 
@@ -627,7 +627,7 @@ function normalizeAlign(a) {
 }
 
 function seedDeck() {
-  return makeDeck(null, null, 2);
+  return makeDeck(null, null);
 }
 
 function loadDeck() {
@@ -635,8 +635,7 @@ function loadDeck() {
   try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
   if (!raw) return seedDeck();
   try {
-    const parsed = JSON.parse(raw);
-    return reviveDeck(parsed);
+    return reviveDeck(JSON.parse(raw));
   } catch (e) {
     return seedDeck();
   }
@@ -650,8 +649,7 @@ function reviveDeck(data) {
     .filter(s => s && typeof s.text === 'string')
     .map((s, i) => ({ id: 'slide-' + (i + 1), text: s.text, align: normalizeAlign(s.align) }));
   if (slides.length === 0) return seedDeck();
-  const d = makeDeck(slides, data && data.settings, slides.length + 1);
-  return d;
+  return makeDeck(slides, data && data.settings);
 }
 
 function saveDeck() {
@@ -757,8 +755,14 @@ function setStatus(msg, isError) {
 }
 
 function snippetFor(text) {
-  const firstLine = (text.split('\n').find(l => l.trim() !== '') || '').trim();
-  return firstLine;
+  return (text.split('\n').find(l => l.trim() !== '') || '').trim();
+}
+
+// Fill a slide-row's snippet element from slide text, marking empty slides.
+function setSnippet(el, text) {
+  const snippet = snippetFor(text);
+  el.textContent = snippet || 'Empty slide';
+  el.classList.toggle('empty', !snippet);
 }
 
 function renderSlideList() {
@@ -775,9 +779,8 @@ function renderSlideList() {
     num.textContent = String(i + 1);
 
     const snip = document.createElement('span');
-    const text = snippetFor(slide.text);
-    snip.className = 'snippet' + (text ? '' : ' empty');
-    snip.textContent = text || 'Empty slide';
+    snip.className = 'snippet';
+    setSnippet(snip, slide.text);
 
     li.appendChild(num);
     li.appendChild(snip);
@@ -815,12 +818,8 @@ function focusTextarea() {
 textArea.addEventListener('input', () => {
   currentSlide().text = textArea.value;
   // update snippet + empty state without rebuilding the whole list
-  const row = listEl.querySelector('.slide-row[data-id="' + deck.currentSlideId + '"] .snippet');
-  if (row) {
-    const text = snippetFor(textArea.value);
-    row.textContent = text || 'Empty slide';
-    row.classList.toggle('empty', !text);
-  }
+  const snip = listEl.querySelector('.slide-row[data-id="' + deck.currentSlideId + '"] .snippet');
+  if (snip) setSnippet(snip, textArea.value);
   saveDeck();
 });
 
@@ -855,6 +854,10 @@ nextBtn.addEventListener('click', () => moveSlide(1));
 
 let dragFrom = null;
 
+function clearDragOver() {
+  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+}
+
 listEl.addEventListener('dragstart', (e) => {
   const row = e.target.closest('.slide-row');
   if (!row) return;
@@ -869,7 +872,7 @@ listEl.addEventListener('dragover', (e) => {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   const row = e.target.closest('.slide-row');
-  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  clearDragOver();
   if (row) row.classList.add('drag-over');
 });
 
@@ -882,7 +885,7 @@ listEl.addEventListener('drop', (e) => {
   if (dragFrom === null) return;
   e.preventDefault();
   const row = e.target.closest('.slide-row');
-  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  clearDragOver();
   if (row) {
     const to = Number(row.dataset.index);
     reorderSlide(dragFrom, to);
@@ -891,7 +894,7 @@ listEl.addEventListener('drop', (e) => {
 });
 
 listEl.addEventListener('dragend', () => {
-  listEl.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+  clearDragOver();
   dragFrom = null;
 });
 
@@ -1060,19 +1063,23 @@ function deckFromHash() {
 // Boot
 // =====================================================================
 
+function clearHash() {
+  history.replaceState(null, '', location.href.split('#')[0]);
+}
+
 function boot() {
   const fromHash = deckFromHash();
   if (fromHash === null) {
     // Hash present but invalid: keep local deck, surface a non-blocking error.
     deck = loadDeck();
     setStatus('Could not read shared deck from URL; kept your local deck', true);
-    history.replaceState(null, '', location.href.split('#')[0]);
+    clearHash();
   } else if (fromHash) {
     // Valid shared deck: import, save, select first slide, clear the hash.
     deck = fromHash;
     deck.currentSlideId = deck.slides[0].id;
     saveDeck();
-    history.replaceState(null, '', location.href.split('#')[0]);
+    clearHash();
   } else {
     // No hash: load local or seed sample.
     deck = loadDeck();
