@@ -782,7 +782,7 @@ test.describe('styling', () => {
       getComputedStyle(document.documentElement).fontSize);
     expect(rootPx).toBe('20px');
 
-    // The slide-number gutter (--num-col: 4.5rem) scales with root: 4.5 * 20 = 90px.
+    // Slide number font (.num is 2rem) scales with root: 2 * 20 = 40px.
     const numFontPx = await page.evaluate(() =>
       parseFloat(getComputedStyle(document.querySelector('.slide-head .num')).fontSize));
     expect(numFontPx).toBeCloseTo(40, 0); // 2rem * 20px
