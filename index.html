@@ -960,10 +960,12 @@
                 return "slide-" + deck.nextId++;
             }
 
-            function newSlide() {
+            // Insert an empty slide at `index` and select it. The "+ add slide"
+            // and per-slide "insert" controls pass different indices (after vs.
+            // before the current slide).
+            function newSlideAt(index) {
                 const id = freshId();
-                const at = currentSlideIndex();
-                deck.slides.splice(at + 1, 0, {
+                deck.slides.splice(index, 0, {
                     id,
                     text: "",
                 });
@@ -1100,13 +1102,17 @@
                 const controls = document.createElement("div");
                 controls.className = "controls";
 
-                // Insert and move both act on the deck (add a slide after this one,
+                // Insert and move both act on the deck (add a slide before this one,
                 // reorder this one), so they lead the row as a group.
                 const insert = document.createElement("button");
                 insert.type = "button";
                 insert.className = "insert";
                 insert.textContent = "↑ insert slide";
-                insert.addEventListener("click", newSlide);
+                // The ↑ label means "above": insert at the current slide's index,
+                // pushing it down.
+                insert.addEventListener("click", () =>
+                    newSlideAt(currentSlideIndex()),
+                );
                 controls.appendChild(insert);
 
                 // Move is the reorder affordance: drag it (mouse) or focus it and press
@@ -1270,9 +1276,12 @@
                 if (ta) ta.focus();
             }
 
+            // "+ add slide" appends after the current slide.
             document
                 .getElementById("btn-new")
-                .addEventListener("click", newSlide);
+                .addEventListener("click", () =>
+                    newSlideAt(currentSlideIndex() + 1),
+                );
 
             // ---- Open a collapsed slide (the open slide IS the selection) ----
 

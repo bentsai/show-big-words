@@ -109,6 +109,25 @@ test.describe('data model', () => {
     expect(deck.currentSlideId).toBe(deck.slides[1].id);
   });
 
+  test('"insert slide" control inserts before the current slide', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Alpha');
+
+    // The per-slide "insert slide" control adds an empty slide above the current
+    // one (unlike "+ add slide", which appends after it).
+    await page.locator('.insert').click();
+    await expect(page.locator('.slide-row')).toHaveCount(2);
+
+    // The new empty slide is selected and sits at position 1, above "Alpha".
+    await expect(page.locator('#slide-text')).toHaveValue('');
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('01');
+
+    const deck = await readDeck(page);
+    expect(deck.slides[0].text).toBe('');
+    expect(deck.slides[1].text).toBe('Alpha');
+    expect(deck.currentSlideId).toBe(deck.slides[0].id);
+  });
+
   test('delete is hidden at one slide and removes the current slide otherwise', async ({ page }) => {
     await freshLoad(page);
     await expect(page.locator('.delete')).toHaveCount(0);
