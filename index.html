@@ -208,6 +208,14 @@
             #editor.hidden {
                 display: none;
             }
+            /* On wide viewports the editor is one centered sheet: masthead, status,
+               slide stack, and add-slide button all share these left/right edges.
+               #editor stays full-window (it is the scroll container); the cap lives
+               on this inner wrapper. */
+            .editor-sheet {
+                max-width: 84ch;
+                margin-inline: auto;
+            }
             #present.hidden {
                 display: none;
             }
@@ -314,7 +322,6 @@
             .slide-stack {
                 list-style: none;
                 padding: 20px 32px;
-                max-width: 80ch;
             }
             .slide-row {
                 padding: 18px 0;
@@ -554,6 +561,7 @@
 
         <!-- Editor mode -->
         <div id="editor">
+            <div class="editor-sheet">
             <header class="masthead">
                 <h1 class="title">Show Big Words</h1>
                 <div class="masthead-right">
@@ -601,6 +609,7 @@
             <button class="new-slide" id="btn-new" type="button">
                 + add slide
             </button>
+            </div>
         </div>
 
         <script>

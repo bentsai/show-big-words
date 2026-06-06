@@ -744,4 +744,34 @@ test.describe('styling', () => {
       expect(overlap).toBe(false);
     }
   });
+
+  test('on a wide viewport the editor is one centered sheet', async ({ page }) => {
+    await freshLoad(page);
+    await page.setViewportSize({ width: 1900, height: 900 });
+
+    const m = await page.evaluate(() => {
+      const sheet = document.querySelector('.editor-sheet');
+      const mast = document.querySelector('.masthead');
+      const stack = document.querySelector('.slide-stack');
+      const s = sheet.getBoundingClientRect();
+      return {
+        leftMargin: s.left,
+        rightMargin: window.innerWidth - s.right,
+        sheetWidth: s.width,
+        mastLeft: mast.getBoundingClientRect().left,
+        mastRight: mast.getBoundingClientRect().right,
+        stackLeft: stack.getBoundingClientRect().left,
+        stackRight: stack.getBoundingClientRect().right,
+      };
+    });
+
+    // The sheet is centered: real margins on both sides, roughly equal.
+    expect(m.leftMargin).toBeGreaterThan(100);
+    expect(Math.abs(m.leftMargin - m.rightMargin)).toBeLessThanOrEqual(2);
+    // The sheet does not span the whole window (it is capped at 84ch).
+    expect(m.sheetWidth).toBeLessThan(1900);
+    // Masthead and slide stack share the sheet's left/right edges.
+    expect(Math.abs(m.mastLeft - m.stackLeft)).toBeLessThanOrEqual(1);
+    expect(Math.abs(m.mastRight - m.stackRight)).toBeLessThanOrEqual(1);
+  });
 });
