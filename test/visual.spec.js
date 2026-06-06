@@ -141,6 +141,24 @@ test.describe('data model', () => {
     await expect(page.locator('.slide-row.selected #slide-text')).toHaveValue('Two');
   });
 
+  test('open and collapsed slide bodies are the same height (incl. trailing blank line)', async ({ page }) => {
+    // A trailing newline (e.g. a top-aligned slide) made the editing textarea one
+    // line taller than the collapsed snippet, so the body jumped height on open.
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'Don’t be a wimp.\n', align: 'top' },
+      { id: 'slide-2', text: 'Don’t be a wimp.\n', align: 'top' },
+    ], currentSlideId: 'slide-1', nextId: 3 });
+
+    const heights = await page.evaluate(() => {
+      const body = (row) => row.querySelector('.slide-body').getBoundingClientRect().height;
+      return {
+        open: body(document.querySelector('.slide-row.selected')),
+        collapsed: body(document.querySelector('.slide-row:not(.selected)')),
+      };
+    });
+    expect(heights.open).toBe(heights.collapsed);
+  });
+
   test('settings cycle on click and persist independently of slide text', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#set-theme').click();       // paper -> ink

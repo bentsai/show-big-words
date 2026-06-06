@@ -1040,7 +1040,12 @@
 
             // Fill an inactive row from slide text, showing it in full, marking empties.
             function setSnippet(el, text) {
-                el.textContent = text || "Empty slide";
+                // pre-wrap collapses a single trailing newline, but the editing textarea
+                // counts it as a line (via scrollHeight), so a slide whose text ends in a
+                // blank line — e.g. top-aligned slides — would jump height on open. Append
+                // a space so the snippet reserves that same final line.
+                const display = text.endsWith("\n") ? text + " " : text;
+                el.textContent = display || "Empty slide";
                 el.classList.toggle("empty", !text.trim());
             }
 
