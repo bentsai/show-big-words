@@ -23,6 +23,13 @@
                 box-sizing: border-box;
             }
 
+            /* Scale the whole editor up ~25%. Everything in the editor is sized in
+               rem, so this one rule lifts title, numbers, text, and controls together.
+               Present mode is pixel-sized (see fitText) and is unaffected. */
+            html {
+                font-size: 125%; /* 20px from the 16px browser default */
+            }
+
             /* ---- Slide rendering (themes, fonts, layers) ---- */
 
             :root {
@@ -208,6 +215,14 @@
             #editor.hidden {
                 display: none;
             }
+            /* On wide viewports the editor is one centered sheet: masthead, status,
+               slide stack, and add-slide button all share these left/right edges.
+               #editor stays full-window (it is the scroll container); the cap lives
+               on this inner wrapper. */
+            .editor-sheet {
+                max-width: 84ch;
+                margin-inline: auto;
+            }
             #present.hidden {
                 display: none;
             }
@@ -314,7 +329,6 @@
             .slide-stack {
                 list-style: none;
                 padding: 20px 32px;
-                max-width: 80ch;
             }
             .slide-row {
                 padding: 18px 0;
@@ -374,7 +388,7 @@
                 width: 100%;
                 box-sizing: border-box;
                 padding-right: 40px;
-                margin-bottom: -4px;
+                margin-bottom: -0.25rem; /* -4px at 16px root, -5px at 20px root */
             }
             .slide-body .snippet {
                 display: block;
@@ -384,7 +398,7 @@
                 font-family: var(--font-mono);
                 font-size: 1.5rem;
                 font-weight: 400;
-                line-height: 1.25;
+                line-height: 1.9rem; /* 38px line box keeps autosized textarea and snippet heights integer-equal */
                 letter-spacing: -0.02em;
                 text-align: left;
                 color: var(--slide-gray);
@@ -417,7 +431,7 @@
                 color: var(--ink);
                 font-family: var(--font-mono);
                 font-size: 1.5rem;
-                line-height: 1.25;
+                line-height: 1.9rem; /* 38px line box keeps autosized textarea and snippet heights integer-equal */
                 letter-spacing: -0.02em;
                 tab-size: 4;
                 transition: background-color 120ms ease;
@@ -554,6 +568,7 @@
 
         <!-- Editor mode -->
         <div id="editor">
+            <div class="editor-sheet">
             <header class="masthead">
                 <h1 class="title">Show Big Words</h1>
                 <div class="masthead-right">
@@ -601,6 +616,7 @@
             <button class="new-slide" id="btn-new" type="button">
                 + add slide
             </button>
+            </div>
         </div>
 
         <script>
