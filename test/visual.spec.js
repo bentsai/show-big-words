@@ -403,6 +403,17 @@ test.describe('editor shortcuts', () => {
     await expect(page.locator('#set-theme')).toHaveText('paper'); // unchanged
     await expect(page.locator('#set-font')).toHaveText('sans');
   });
+
+  test('modified t and f (Ctrl/Cmd) do not cycle settings or block the browser', async ({ page }) => {
+    await freshLoad(page);
+    await page.keyboard.press('Escape'); // textarea is auto-focused on load
+    // Ctrl+t / Ctrl+f are browser shortcuts (new tab, find); the single-key
+    // editor shortcuts must not fire on a modified press.
+    await page.keyboard.press('Control+t');
+    await page.keyboard.press('Control+f');
+    await expect(page.locator('#set-theme')).toHaveText('paper');
+    await expect(page.locator('#set-font')).toHaveText('sans');
+  });
 });
 
 // ---------------------------------------------------------------------

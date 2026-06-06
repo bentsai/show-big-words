@@ -1477,6 +1477,9 @@
             // they would just insert characters.
             function onEditorKey(e) {
                 if (presenting) return;
+                // Single-key shortcuts only; let browser combos (Cmd/Ctrl+F find,
+                // Cmd/Ctrl+T new tab) through untouched.
+                if (e.metaKey || e.ctrlKey || e.altKey) return;
                 const editing =
                     document.activeElement &&
                     document.activeElement.id === "slide-text";
