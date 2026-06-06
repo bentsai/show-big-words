@@ -1498,6 +1498,19 @@
                     }
                     return;
                 }
+                // Shift+Enter while editing jumps to the next slide's editor,
+                // appending a fresh slide first if we're on the last one. Plain
+                // Enter still inserts a newline.
+                if (editing && e.key === "Enter" && e.shiftKey) {
+                    e.preventDefault();
+                    const next = currentSlideIndex() + 1;
+                    if (next < deck.slides.length) {
+                        selectSlide(deck.slides[next].id);
+                    } else {
+                        newSlideAt(next);
+                    }
+                    return;
+                }
                 if (editing) return;
                 if (e.key === "p") {
                     enterPresent();

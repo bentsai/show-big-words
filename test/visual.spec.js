@@ -433,6 +433,43 @@ test.describe('editor shortcuts', () => {
     await expect(page.locator('#set-theme')).toHaveText('paper');
     await expect(page.locator('#set-font')).toHaveText('sans');
   });
+
+  test('Shift+Enter moves the cursor to the next slide editor', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'First', align: 'center' },
+      { id: 'slide-2', text: 'Second', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+
+    await page.locator('#slide-text').focus();
+    await page.keyboard.press('Shift+Enter');
+
+    // The next slide is now open, focused, and its text is unchanged.
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('02');
+    await expect(page.locator('#slide-text')).toHaveValue('Second');
+    await expect(page.locator('#slide-text')).toBeFocused();
+    // No newline was inserted into the slide we left.
+    const deck = await readDeck(page);
+    expect(deck.slides[0].text).toBe('First');
+  });
+
+  test('Shift+Enter on the last slide adds a new slide and edits it', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'Only', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 2 });
+
+    await page.locator('#slide-text').focus();
+    await page.keyboard.press('Shift+Enter');
+
+    // A new empty slide is appended, selected, and focused.
+    await expect(page.locator('.slide-row')).toHaveCount(2);
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('02');
+    await expect(page.locator('#slide-text')).toHaveValue('');
+    await expect(page.locator('#slide-text')).toBeFocused();
+
+    const deck = await readDeck(page);
+    expect(deck.slides.map(s => s.text)).toEqual(['Only', '']);
+    expect(deck.currentSlideId).toBe(deck.slides[1].id);
+  });
 });
 
 // ---------------------------------------------------------------------

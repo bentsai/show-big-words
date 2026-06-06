@@ -6,7 +6,7 @@ Each task carries `where:` (so it's actionable without a grep), `why:`, and
 
 ## Now
 
-_(nothing queued)_
+_(empty)_
 
 ## Later
 
