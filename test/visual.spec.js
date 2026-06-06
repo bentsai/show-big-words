@@ -774,4 +774,23 @@ test.describe('styling', () => {
     expect(Math.abs(m.mastLeft - m.stackLeft)).toBeLessThanOrEqual(1);
     expect(Math.abs(m.mastRight - m.stackRight)).toBeLessThanOrEqual(1);
   });
+
+  test('editor scales up via a 20px root font-size, present mode unaffected', async ({ page }) => {
+    await freshLoad(page);
+
+    const rootPx = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).fontSize);
+    expect(rootPx).toBe('20px');
+
+    // The slide-number gutter (--num-col: 4.5rem) scales with root: 4.5 * 20 = 90px.
+    const numFontPx = await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.querySelector('.slide-head .num')).fontSize));
+    expect(numFontPx).toBeCloseTo(40, 0); // 2rem * 20px
+
+    // Present mode text is pixel-sized (not rem), so entering present still fits.
+    await page.locator('#slide-text').fill('Ship');
+    await page.locator('#btn-present').click();
+    await page.waitForFunction(() => document.getElementById('editor').classList.contains('hidden'));
+    await expect(page.locator('#text')).toHaveText('Ship');
+  });
 });
