@@ -28,7 +28,7 @@ While editing, press **Escape** to step out of the text box; then `t` cycles the
 |---------|--------|---------|
 | theme | `paper`, `ink`, `presenter`, `gradient` | `paper` |
 | font | `sans`, `mono`, `serif`, `pixel` | `sans` |
-| transition | `wipe` | `none` |
+| transition | `wipe`, `fade` | `none` |
 
 ### Formatting
 

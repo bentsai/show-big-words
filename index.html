@@ -552,7 +552,7 @@
         </style>
     </head>
     <body>
-        <!-- Present mode: two stacked layers for wipe transitions. Hidden until Present. -->
+        <!-- Present mode: two stacked layers for wipe/fade transitions. Hidden until Present. -->
         <div id="present" class="hidden">
             <div id="layer-a" class="layer active">
                 <div id="slide" class="slide">
@@ -643,7 +643,7 @@
 
             const FONTS = ["sans", "mono", "serif", "pixel"];
             const THEMES = ["paper", "ink", "presenter", "gradient"];
-            const TRANSITIONS = ["none", "wipe"];
+            const TRANSITIONS = ["none", "wipe", "fade"];
             const PRESENTER_COLORS = [
                 "blue",
                 "purple",
@@ -800,13 +800,14 @@
                 textEl.innerHTML = html;
             }
 
-            let wipeAnimation = null;
+            let pendingTransition = null;
             const WIPE_DURATION = 1200;
+            const FADE_DURATION = 450;
 
-            function commitWipe() {
-                if (!wipeAnimation) return;
-                const { incoming, outgoing, anim } = wipeAnimation;
-                wipeAnimation = null;
+            function commitTransition() {
+                if (!pendingTransition) return;
+                const { incoming, outgoing, anim } = pendingTransition;
+                pendingTransition = null;
                 incoming.layer.classList.add("active");
                 anim.cancel();
                 outgoing.layer.classList.remove("active");
@@ -823,9 +824,13 @@
                     currentIndex = presentSlides.length - 1;
                 if (currentIndex < 0) currentIndex = 0;
 
-                if (currentTransition === "wipe" && direction) {
-                    if (wipeAnimation) {
-                        commitWipe();
+                const animated =
+                    (currentTransition === "wipe" ||
+                        currentTransition === "fade") &&
+                    direction;
+                if (animated) {
+                    if (pendingTransition) {
+                        commitTransition();
                     }
                     const incoming = activeLayer === layerA ? layerB : layerA;
                     const outgoing = activeLayer;
@@ -847,27 +852,40 @@
                     outgoing.layer.style.zIndex = 1;
                     outgoing.layer.classList.add("active");
 
-                    // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
-                    const clipFrom =
-                        direction === "forward"
-                            ? "polygon(calc(100% + 14vh) 0, 200% 0, 200% 100%, 100% 100%)"
-                            : "polygon(0 0, -100% 0, -100% 100%, calc(0% - 14vh) 100%)";
-                    const clipTo =
-                        direction === "forward"
-                            ? "polygon(-14vh 0, 200% 0, 200% 100%, calc(0% - 28vh) 100%)"
-                            : "polygon(calc(100% + 28vh) 0, -100% 0, -100% 100%, calc(100% + 14vh) 100%)";
+                    let keyframes;
+                    let duration;
+                    let easing;
+                    if (currentTransition === "fade") {
+                        // Crossfade reveals incoming by opacity, so it must be
+                        // unclipped; fill "both" applies opacity:0 from the first
+                        // frame to avoid a flash before the animation starts.
+                        incoming.layer.classList.add("active");
+                        keyframes = [{ opacity: 0 }, { opacity: 1 }];
+                        duration = FADE_DURATION;
+                        easing = "ease";
+                    } else {
+                        // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
+                        const clipFrom =
+                            direction === "forward"
+                                ? "polygon(calc(100% + 14vh) 0, 200% 0, 200% 100%, 100% 100%)"
+                                : "polygon(0 0, -100% 0, -100% 100%, calc(0% - 14vh) 100%)";
+                        const clipTo =
+                            direction === "forward"
+                                ? "polygon(-14vh 0, 200% 0, 200% 100%, calc(0% - 28vh) 100%)"
+                                : "polygon(calc(100% + 28vh) 0, -100% 0, -100% 100%, calc(100% + 14vh) 100%)";
+                        keyframes = [{ clipPath: clipFrom }, { clipPath: clipTo }];
+                        duration = WIPE_DURATION;
+                        easing = "cubic-bezier(0.16, 1, 0.3, 1)";
+                    }
 
-                    const anim = incoming.layer.animate(
-                        [{ clipPath: clipFrom }, { clipPath: clipTo }],
-                        {
-                            duration: WIPE_DURATION,
-                            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
-                            fill: "forwards",
-                        },
-                    );
-                    wipeAnimation = { incoming, outgoing, anim };
+                    const anim = incoming.layer.animate(keyframes, {
+                        duration,
+                        easing,
+                        fill: currentTransition === "fade" ? "both" : "forwards",
+                    });
+                    pendingTransition = { incoming, outgoing, anim };
                     anim.onfinish = () => {
-                        commitWipe();
+                        commitTransition();
                     };
                 } else {
                     updateThemeDisplay();
@@ -1080,6 +1098,7 @@
             const TRANSITION_LABELS = {
                 none: "no transition",
                 wipe: "wipe transition",
+                fade: "crossfade transition",
             };
 
             function renderSettings() {
@@ -1408,7 +1427,7 @@
             function exitPresent() {
                 presenting = false;
                 document.removeEventListener("keydown", onPresentKey);
-                if (wipeAnimation) commitWipe();
+                if (pendingTransition) commitTransition();
 
                 // Reset both layers to a clean state.
                 layerA.layer.classList.add("active");

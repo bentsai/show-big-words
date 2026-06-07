@@ -315,8 +315,10 @@ test.describe('editor interactions', () => {
     await expect(page.locator('#set-transition')).toHaveText('no transition');
     await page.locator('#set-transition').click();
     await expect(page.locator('#set-transition')).toHaveText('wipe transition');
+    await page.locator('#set-transition').click();
+    await expect(page.locator('#set-transition')).toHaveText('crossfade transition');
     const deck = await readDeck(page);
-    expect(deck.settings.transition).toBe('wipe');
+    expect(deck.settings.transition).toBe('fade');
   });
 
   test('no Duplicate control exists', async ({ page }) => {
@@ -627,6 +629,22 @@ test.describe('presentation', () => {
     // Already on the last slide: another click is a no-op (no wrap-around).
     await page.locator('.layer.active').click();
     await expect(page.locator('#text')).toHaveText('Two');
+  });
+
+  test('crossfade transition advances to the next slide', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'fade' }, slides: [
+      { id: 'slide-1', text: 'One', align: 'center' },
+      { id: 'slide-2', text: 'Two', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+    await present(page);
+    // Slide one starts on layer A.
+    await expect(page.locator('#layer-a.active .text')).toHaveText('One');
+
+    await page.keyboard.press('ArrowRight');
+    // A crossfade renders the next slide on the OTHER layer and fades it in (unlike
+    // "none", which repaints the same layer in place). Layer B becomes active.
+    await expect(page.locator('#layer-b.active .text')).toHaveText('Two');
+    await expect(page.locator('.layer.active')).toHaveCount(1);
   });
 
   test('f key cycles fonts and persists to the deck', async ({ page }) => {
