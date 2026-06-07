@@ -855,6 +855,7 @@
                     let keyframes;
                     let duration;
                     let easing;
+                    let fill;
                     if (currentTransition === "fade") {
                         // Crossfade reveals incoming by opacity, so it must be
                         // unclipped; fill "both" applies opacity:0 from the first
@@ -863,6 +864,7 @@
                         keyframes = [{ opacity: 0 }, { opacity: 1 }];
                         duration = FADE_DURATION;
                         easing = "ease";
+                        fill = "both";
                     } else {
                         // tan(8°) * 100vh ≈ 14vh skew; 28vh lets trailing edge fully clear viewport
                         const clipFrom =
@@ -876,12 +878,13 @@
                         keyframes = [{ clipPath: clipFrom }, { clipPath: clipTo }];
                         duration = WIPE_DURATION;
                         easing = "cubic-bezier(0.16, 1, 0.3, 1)";
+                        fill = "forwards";
                     }
 
                     const anim = incoming.layer.animate(keyframes, {
                         duration,
                         easing,
-                        fill: currentTransition === "fade" ? "both" : "forwards",
+                        fill,
                     });
                     pendingTransition = { incoming, outgoing, anim };
                     anim.onfinish = () => {
