@@ -1427,6 +1427,15 @@
                 renderEditor();
             }
 
+            // Advance one slide; no-op on the last. Shared by the keyboard
+            // (ArrowRight/Space/Enter) and clicking the slide.
+            function goForward() {
+                if (currentIndex < presentSlides.length - 1) {
+                    currentIndex++;
+                    renderSlide("forward");
+                }
+            }
+
             function onPresentKey(e) {
                 switch (e.key) {
                     case "Escape":
@@ -1436,10 +1445,7 @@
                     case "ArrowRight":
                     case " ":
                     case "Enter":
-                        if (currentIndex < presentSlides.length - 1) {
-                            currentIndex++;
-                            renderSlide("forward");
-                        }
+                        goForward();
                         e.preventDefault();
                         break;
                     case "ArrowLeft":
@@ -1496,16 +1502,12 @@
                 .getElementById("btn-present")
                 .addEventListener("click", enterPresent);
 
-            // Clicking the slide advances forward, mirroring ArrowRight (no-op on
-            // the last slide). Bound once: the layers bubble their clicks up to
-            // #present, and the btn-present click that starts presenting never
-            // passes through #present, so there's no race on the opening click.
+            // Clicking the slide advances forward. Bound once: the layers bubble
+            // their clicks up to #present, and the btn-present click that starts
+            // presenting never passes through #present, so there's no race on the
+            // opening click.
             presentEl.addEventListener("click", () => {
-                if (!presenting) return;
-                if (currentIndex < presentSlides.length - 1) {
-                    currentIndex++;
-                    renderSlide("forward");
-                }
+                if (presenting) goForward();
             });
 
             // Editor-mode keyboard shortcuts. The slide textarea is auto-focused while
