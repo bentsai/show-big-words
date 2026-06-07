@@ -47,6 +47,18 @@ function readDeck(page) {
   }, STORAGE_KEY);
 }
 
+// A one-slide deck with default settings — the common starting point for tests
+// that only care about a single slide's text/rendering.
+function singleSlideDeck(text) {
+  return {
+    version: 1,
+    settings: { theme: 'paper', font: 'sans', transition: 'none' },
+    slides: [{ id: 'slide-1', text, align: 'center' }],
+    currentSlideId: 'slide-1',
+    nextId: 2,
+  };
+}
+
 // Reorder by dragging a slide's move handle. Native draggable DnD is not reliably
 // driven by Playwright's mouse-based dragTo, so we dispatch the exact HTML5
 // drag events the app listens for: dragstart on the .move, drop on the target row.
@@ -396,7 +408,7 @@ test.describe('url sharing', () => {
   });
 
   test('no hash loads localStorage or the sample deck', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'From storage', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('From storage'));
     await expect(page.locator('#slide-text')).toHaveValue('From storage');
   });
 });
@@ -523,7 +535,7 @@ test.describe('presentation', () => {
   });
 
   test('single word is never broken across lines', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship'));
     await present(page);
     await expect(page.locator('#text')).toHaveText('Ship');
 
@@ -538,7 +550,7 @@ test.describe('presentation', () => {
   });
 
   test('single word fills significant viewport width', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship'));
     await present(page);
     await expect(page.locator('#text')).toHaveText('Ship');
     const ratio = await page.evaluate(() => {
@@ -549,7 +561,7 @@ test.describe('presentation', () => {
   });
 
   test('multi-word text wraps at spaces not mid-word', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship it today', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship it today'));
     await present(page);
     await expect(page.locator('#text')).toHaveText('Ship it today');
 
@@ -648,7 +660,7 @@ test.describe('presentation', () => {
   });
 
   test('f key cycles fonts and persists to the deck', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship'));
     await present(page);
     const getFont = () => page.evaluate(() => {
       const c = document.documentElement.className;
@@ -670,7 +682,7 @@ test.describe('presentation', () => {
   });
 
   test('t key cycles themes and persists to the deck', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship'));
     await present(page);
     const getBg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(await getBg()).toBe('rgb(255, 255, 255)'); // paper
@@ -685,7 +697,7 @@ test.describe('presentation', () => {
   });
 
   test('b key toggles text visibility', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Ship'));
     await present(page);
     const getVis = () => page.evaluate(() => getComputedStyle(document.getElementById('text')).visibility);
     expect(await getVis()).toBe('visible');
@@ -705,7 +717,7 @@ test.describe('presentation', () => {
   });
 
   test('subtext renders at half the main scale', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Main\n\nsubtext here', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Main\n\nsubtext here'));
     await present(page);
     await expect(page.locator('.subtext')).toHaveCount(1);
     const result = await page.evaluate(() => {
@@ -717,7 +729,7 @@ test.describe('presentation', () => {
   });
 
   test('line with two leading spaces renders centered', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: '  centered line\nnot centered', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('  centered line\nnot centered'));
     await present(page);
     const result = await page.evaluate(() => {
       const text = document.getElementById('text');
@@ -738,7 +750,7 @@ test.describe('presentation', () => {
   });
 
   test('annotation renders 4 steps smaller with reduced opacity', async ({ page }) => {
-    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Do not be like them ((Matthew 6:8))', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
+    await loadWithDeck(page, singleSlideDeck('Do not be like them ((Matthew 6:8))'));
     await present(page);
     const result = await page.evaluate((SCALE) => {
       const text = document.getElementById('text');
