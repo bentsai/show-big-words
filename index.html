@@ -1458,6 +1458,18 @@
                 }
             }
 
+            // Cycle font/theme during present mode and persist to the deck, so
+            // the choice survives exit and reload. applyFn (applyFont/applyTheme)
+            // applies the value live; we also write it into deck.settings.
+            function cyclePresentSetting(key, list, current, applyFn) {
+                const next = nextInCycle(list, current);
+                applyFn(next);
+                deck.settings[key] = next;
+                saveDeck();
+                renderSettings();
+                renderSlide();
+            }
+
             function onPresentKey(e) {
                 switch (e.key) {
                     case "Escape":
@@ -1488,23 +1500,12 @@
                         renderSlide("forward");
                         e.preventDefault();
                         break;
-                    // f/t cycle font/theme and persist to the deck (see enterPresent):
-                    // applyFont/applyTheme update currentFont/currentTheme, which we
-                    // then write back so the choice survives exit and reload.
                     case "f":
-                        applyFont(nextInCycle(FONTS, currentFont));
-                        deck.settings.font = currentFont;
-                        saveDeck();
-                        renderSettings();
-                        renderSlide();
+                        cyclePresentSetting("font", FONTS, currentFont, applyFont);
                         e.preventDefault();
                         break;
                     case "t":
-                        applyTheme(nextInCycle(THEMES, currentTheme));
-                        deck.settings.theme = currentTheme;
-                        saveDeck();
-                        renderSettings();
-                        renderSlide();
+                        cyclePresentSetting("theme", THEMES, currentTheme, applyTheme);
                         e.preventDefault();
                         break;
                     case "b": {
