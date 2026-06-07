@@ -1496,6 +1496,18 @@
                 .getElementById("btn-present")
                 .addEventListener("click", enterPresent);
 
+            // Clicking the slide advances forward, mirroring ArrowRight (no-op on
+            // the last slide). Bound once: the layers bubble their clicks up to
+            // #present, and the btn-present click that starts presenting never
+            // passes through #present, so there's no race on the opening click.
+            presentEl.addEventListener("click", () => {
+                if (!presenting) return;
+                if (currentIndex < presentSlides.length - 1) {
+                    currentIndex++;
+                    renderSlide("forward");
+                }
+            });
+
             // Editor-mode keyboard shortcuts. The slide textarea is auto-focused while
             // editing, so Escape blurs it to step out of typing; the single-key
             // shortcuts (p/t/f) only fire once focus is outside the textarea, otherwise

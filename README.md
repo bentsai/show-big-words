@@ -66,6 +66,8 @@ Main point
 
 ## Presenting
 
+Click anywhere on the slide to advance to the next one. The keys below also work:
+
 | Key | Action |
 |-----|--------|
 | Right / Space / Enter | Next slide |

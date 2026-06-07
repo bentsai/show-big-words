@@ -611,6 +611,24 @@ test.describe('presentation', () => {
     await expect(page.locator('#text')).toHaveText('One');
   });
 
+  test('clicking the page advances the slide and stops at the last one', async ({ page }) => {
+    await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [
+      { id: 'slide-1', text: 'One', align: 'center' },
+      { id: 'slide-2', text: 'Two', align: 'center' }
+    ], currentSlideId: 'slide-1', nextId: 3 });
+    await present(page);
+    await expect(page.locator('#text')).toHaveText('One');
+
+    // The visible click target is the full-screen layer; the listener on
+    // #present catches it via bubbling.
+    await page.locator('#layer-a').click();
+    await expect(page.locator('#text')).toHaveText('Two');
+
+    // Already on the last slide: another click is a no-op (no wrap-around).
+    await page.locator('.layer.active').click();
+    await expect(page.locator('#text')).toHaveText('Two');
+  });
+
   test('f key cycles fonts and persists to the deck', async ({ page }) => {
     await loadWithDeck(page, { version: 1, settings: { theme: 'paper', font: 'sans', transition: 'none' }, slides: [{ id: 'slide-1', text: 'Ship', align: 'center' }], currentSlideId: 'slide-1', nextId: 2 });
     await present(page);
