@@ -109,12 +109,33 @@ test.describe('data model', () => {
     expect(deck.currentSlideId).toBe(deck.slides[1].id);
   });
 
+  test('"+ add slide" appends to the end even when a middle slide is selected', async ({ page }) => {
+    await freshLoad(page);
+    await page.locator('#slide-text').fill('Alpha');
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Beta');
+    await page.locator('#btn-new').click();
+    await page.locator('#slide-text').fill('Gamma');
+
+    // Select the middle slide, then add a new slide.
+    await page.locator('.slide-row').nth(1).click();
+    await page.locator('#btn-new').click();
+    await expect(page.locator('.slide-row')).toHaveCount(4);
+
+    // The new empty slide is appended at the end (position 4), not after Beta.
+    await expect(page.locator('.slide-row.selected .num')).toHaveText('04');
+
+    const deck = await readDeck(page);
+    expect(deck.slides.map((s) => s.text)).toEqual(['Alpha', 'Beta', 'Gamma', '']);
+    expect(deck.currentSlideId).toBe(deck.slides[3].id);
+  });
+
   test('"insert slide" control inserts before the current slide', async ({ page }) => {
     await freshLoad(page);
     await page.locator('#slide-text').fill('Alpha');
 
     // The per-slide "insert slide" control adds an empty slide above the current
-    // one (unlike "+ add slide", which appends after it).
+    // one (unlike "+ add slide", which appends to the end of the deck).
     await page.locator('.insert').click();
     await expect(page.locator('.slide-row')).toHaveCount(2);
 

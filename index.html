@@ -1292,11 +1292,12 @@
                 if (ta) ta.focus();
             }
 
-            // "+ add slide" appends after the current slide.
+            // "+ add slide" appends to the end of the deck (use the per-slide
+            // "↑ insert slide" control to add relative to the current slide).
             document
                 .getElementById("btn-new")
                 .addEventListener("click", () =>
-                    newSlideAt(currentSlideIndex() + 1),
+                    newSlideAt(deck.slides.length),
                 );
 
             // ---- Open a collapsed slide (the open slide IS the selection) ----
