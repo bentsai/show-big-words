@@ -5,6 +5,9 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './test',
   testMatch: '**/*.spec.js',
+  // Tests are isolated (own browser context, own localStorage), so run them
+  // in parallel within the single spec file rather than one-at-a-time.
+  fullyParallel: true,
   use: {
     browserName: 'chromium',
     viewport: { width: 1280, height: 720 },
